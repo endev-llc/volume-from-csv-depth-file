@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depth Data Visualizer</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better visual feedback on the canvas */
+        canvas {
+            background-color: #f0f0f0;
+            image-rendering: pixelated; /* Ensures crisp pixels when scaling */
+            border: 1px solid #ccc;
+            /* Make canvas responsive but maintain aspect ratio */
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-white rounded-lg shadow-lg p-6 md:p-8">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Depth Data Visualizer</h1>
+            <p class="text-gray-600 mt-2">Upload a CSV file to visualize depth data. The background is auto-detected and colored black.</p>
+        </div>
+
+        <!-- NEW: Settings for Dimensions and Threshold -->
+        <div class="mb-4 p-4 bg-gray-50 rounded-lg border">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">1. Enter Settings</h3>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <div>
+                    <label for="imageWidth" class="block text-sm font-medium text-gray-600">Width (px)</label>
+                    <input type="number" id="imageWidth" placeholder="e.g., 960" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="imageHeight" class="block text-sm font-medium text-gray-600">Height (px)</label>
+                    <input type="number" id="imageHeight" placeholder="e.g., 240" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="planeThreshold" class="block text-sm font-medium text-gray-600">Background Threshold</label>
+                    <input type="number" id="planeThreshold" value="5" placeholder="e.g., 5" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+        </div>
+
+        <!-- File Input Section -->
+        <div class="mb-6 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+             <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">2. Select File</h3>
+            <label for="csvFile" class="cursor-pointer text-blue-600 hover:text-blue-800 font-semibold">
+                Click here to select your CSV file
+            </label>
+            <input type="file" id="csvFile" class="hidden" accept=".csv">
+            <p id="fileName" class="text-sm text-gray-500 mt-2">No file selected</p>
+        </div>
+
+        <!-- Visualization and Info Section -->
+        <div id="results" class="hidden grid md:grid-cols-2 gap-6 items-start">
+            <!-- Information Panel -->
+            <div class="bg-gray-50 p-4 rounded-lg border">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Analysis Results</h2>
+                <div class="space-y-3">
+                     <div>
+                        <p class="font-medium text-gray-600">Fitted Plane Equation:</p>
+                        <p id="planeEquation" class="text-sm font-mono text-gray-800"></p>
+                    </div>
+                    <div>
+                        <p class="font-medium text-gray-600">Background Points (Black):</p>
+                        <p id="backgroundCount" class="text-lg font-mono text-gray-800"></p>
+                    </div>
+                     <div>
+                        <p class="font-medium text-gray-600">Foreground Points (White):</p>
+                        <p id="foregroundCount" class="text-lg font-mono text-gray-800"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas for Visualization -->
+            <div class="flex flex-col items-center">
+                 <h2 class="text-xl font-semibold text-gray-700 mb-4">Visualization</h2>
+                 <canvas id="depthCanvas" class="rounded-lg shadow-md"></canvas>
+            </div>
+        </div>
+        
+        <div id="loadingMessage" class="hidden text-center text-gray-600 mt-4"><p>Processing file, please wait...</p></div>
+        <div id="errorMessage" class="hidden text-center text-red-600 bg-red-100 p-4 rounded-lg mt-4"></div>
+    </div>
+
+    <script>
+        // DOM element references
+        const fileInput = document.getElementById('csvFile');
+        const fileNameDisplay = document.getElementById('fileName');
+        const resultsDiv = document.getElementById('results');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const canvas = document.getElementById('depthCanvas');
+        const ctx = canvas.getContext('2d');
+        const imageWidthInput = document.getElementById('imageWidth');
+        const imageHeightInput = document.getElementById('imageHeight');
+        const planeThresholdInput = document.getElementById('planeThreshold');
+
+        // UI Info display elements
+        const planeEquationEl = document.getElementById('planeEquation');
+        const backgroundCountEl = document.getElementById('backgroundCount');
+        const foregroundCountEl = document.getElementById('foregroundCount');
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                fileNameDisplay.textContent = file.name;
+                resetUI();
+                loadingMessage.classList.remove('hidden');
+                processFile(file);
+            }
+        });
+
+        function processFile(file) {
+            const width = parseInt(imageWidthInput.value, 10);
+            const height = parseInt(imageHeightInput.value, 10);
+            const threshold = parseFloat(planeThresholdInput.value);
+
+            if (!width || !height || width <= 0 || height <= 0) {
+                showError("Please enter valid, positive numbers for width and height.");
+                return;
+            }
+            if (isNaN(threshold)) {
+                showError("Please enter a valid number for the background threshold.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const csvContent = e.target.result;
+                    const rows = csvContent.split('\n').filter(row => row.trim() !== '').slice(1);
+                    if (rows.length === 0) throw new Error("CSV file is empty or contains only a header.");
+                    
+                    // Create an array of points with x, y, and z coordinates
+                    const points = rows.map((row, i) => ({
+                        x: i % width,
+                        y: Math.floor(i / width),
+                        z: parseFloat(row.split(',')[2])
+                    })).filter(p => !isNaN(p.z));
+
+                    if (points.length === 0) throw new Error("Could not parse valid depth data.");
+                    if (points.length !== width * height) {
+                        throw new Error(`Dimension mismatch: The dimensions (${width}x${height} = ${width*height}) do not match the data points (${points.length}).`);
+                    }
+
+                    // 1. Get an initial guess for background points
+                    const depthValues = points.map(p => p.z);
+                    const backgroundRange = findBackgroundRange(depthValues, 100);
+                    const initialBgPoints = points.filter(p => p.z >= backgroundRange.start && p.z <= backgroundRange.end);
+
+                    // 2. Fit a plane to these initial points
+                    const plane = fitPlaneToPoints(initialBgPoints);
+                    if (!plane) throw new Error("Could not fit a plane to the background points. The background may be too irregular.");
+
+                    // 3. Visualize using the fitted plane and threshold
+                    drawVisualization(points, width, height, plane, threshold);
+                    updateInfoPanel(points, plane, threshold);
+                    
+                    loadingMessage.classList.add('hidden');
+                    resultsDiv.classList.remove('hidden');
+                } catch (error) {
+                    showError(`Error processing file: ${error.message}`);
+                }
+            };
+            reader.onerror = () => showError("Failed to read the file.");
+            reader.readAsText(file);
+        }
+
+        /**
+         * Fits a plane of the form z = ax + by + c to a set of 3D points.
+         * Solves the normal equations using Cramer's rule.
+         * @param {Array<{x, y, z}>} points - The points to fit the plane to.
+         * @returns {{a, b, c}|null} The plane coefficients, or null if fitting fails.
+         */
+        function fitPlaneToPoints(points) {
+            if (points.length < 3) return null;
+
+            let sumX = 0, sumY = 0, sumZ = 0;
+            let sumX2 = 0, sumY2 = 0, sumXY = 0, sumXZ = 0, sumYZ = 0;
+            const n = points.length;
+
+            for (const p of points) {
+                sumX += p.x; sumY += p.y; sumZ += p.z;
+                sumX2 += p.x * p.x; sumY2 += p.y * p.y;
+                sumXY += p.x * p.y; sumXZ += p.x * p.z; sumYZ += p.y * p.z;
+            }
+
+            // Build the matrix A for the system Ax = B
+            const A = [
+                [sumX2, sumXY, sumX],
+                [sumXY, sumY2, sumY],
+                [sumX,  sumY,  n  ]
+            ];
+            // Build the vector B
+            const B = [sumXZ, sumYZ, sumZ];
+
+            const detA = det3x3(A);
+            if (Math.abs(detA) < 1e-9) return null; // Matrix is singular, cannot solve
+
+            // Solve for a, b, c using Cramer's Rule
+            const a = det3x3([ [B[0], A[0][1], A[0][2]], [B[1], A[1][1], A[1][2]], [B[2], A[2][1], A[2][2]] ]) / detA;
+            const b = det3x3([ [A[0][0], B[0], A[0][2]], [A[1][0], B[1], A[1][2]], [A[2][0], B[2], A[2][2]] ]) / detA;
+            const c = det3x3([ [A[0][0], A[0][1], B[0]], [A[1][0], A[1][1], B[1]], [A[2][0], A[2][1], B[2]] ]) / detA;
+            
+            return { a, b, c };
+        }
+
+        // Helper to calculate the determinant of a 3x3 matrix
+        function det3x3(m) {
+            return m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+                   m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+                   m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+        }
+
+        function findBackgroundRange(arr, numBins) {
+            if (arr.length === 0) return { start: 0, end: 0 };
+            let min = arr[0], max = arr[0];
+            for (let i = 1; i < arr.length; i++) {
+                if (arr[i] < min) min = arr[i];
+                if (arr[i] > max) max = arr[i];
+            }
+            if (min === max) return { start: min, end: max };
+            const binSize = (max - min) / numBins;
+            const bins = new Array(numBins).fill(0);
+            for (const value of arr) {
+                let binIndex = Math.floor((value - min) / binSize);
+                if (binIndex === numBins) binIndex--;
+                bins[binIndex]++;
+            }
+            let maxCount = -1, maxBinIndex = -1;
+            for (let i = 0; i < bins.length; i++) {
+                if (bins[i] > maxCount) { maxCount = bins[i]; maxBinIndex = i; }
+            }
+            const rangeStart = min + (maxBinIndex * binSize);
+            return { start: rangeStart, end: rangeStart + binSize };
+        }
+
+        function drawVisualization(points, width, height, plane, threshold) {
+            canvas.width = width;
+            canvas.height = height;
+            ctx.clearRect(0, 0, width, height);
+
+            for (const p of points) {
+                const planeZ = plane.a * p.x + plane.b * p.y + plane.c;
+                const diff = Math.abs(p.z - planeZ);
+
+                ctx.fillStyle = (diff <= threshold) ? 'black' : 'white';
+                ctx.fillRect(p.x, p.y, 1, 1);
+            }
+        }
+        
+        function updateInfoPanel(points, plane, threshold) {
+            let backgroundPoints = 0;
+            for (const p of points) {
+                const planeZ = plane.a * p.x + plane.b * p.y + plane.c;
+                if (Math.abs(p.z - planeZ) <= threshold) {
+                    backgroundPoints++;
+                }
+            }
+            const foregroundPoints = points.length - backgroundPoints;
+            
+            planeEquationEl.textContent = `z = ${plane.a.toFixed(4)}x + ${plane.b.toFixed(4)}y + ${plane.c.toFixed(2)}`;
+            backgroundCountEl.textContent = `${backgroundPoints.toLocaleString()} (${((backgroundPoints / points.length) * 100).toFixed(2)}%)`;
+            foregroundCountEl.textContent = `${foregroundPoints.toLocaleString()} (${((foregroundPoints / points.length) * 100).toFixed(2)}%)`;
+        }
+
+        function resetUI() {
+            resultsDiv.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            loadingMessage.classList.add('hidden');
+            errorMessage.textContent = '';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        function showError(message) {
+            loadingMessage.classList.add('hidden');
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
