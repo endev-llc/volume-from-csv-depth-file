@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Volume Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .upload-section {
+            text-align: center;
+            padding: 30px;
+            border: 3px dashed #3498db;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            background: rgba(52, 152, 219, 0.05);
+        }
+        
+        .file-input { display: none; }
+        
+        .upload-btn {
+            background: linear-gradient(45deg, #3498db, #2c3e50);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .upload-btn:hover { transform: translateY(-2px); }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input[type="range"], select {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .canvas-container {
+            text-align: center;
+            position: relative;
+        }
+        
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            max-width: 100%;
+            cursor: crosshair;
+        }
+        
+        .results {
+            background: #e8f6f3;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            border-left: 5px solid #27ae60;
+        }
+        
+        .volume-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #27ae60;
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .measurement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .measurement-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .measurement-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .measurement-label {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .segmentation-tools {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        .tool-btn {
+            background: #3498db;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .tool-btn:hover { background: #2980b9; }
+        .tool-btn.active { background: #27ae60; }
+        
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .method-selector {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📐 3D Volume Calculator</h1>
+        
+        <div class="upload-section">
+            <h3>Upload Depth Map CSV</h3>
+            <input type="file" id="csvFile" class="file-input" accept=".csv" />
+            <button class="upload-btn" onclick="document.getElementById('csvFile').click()">
+                📁 Choose Depth Data File
+            </button>
+        </div>
+        
+        <div id="mainContent" class="main-content" style="display: none;">
+            <!-- Left Panel: Visualization & Segmentation -->
+            <div class="panel">
+                <h3>Object Segmentation</h3>
+                
+                <div class="instructions">
+                    <strong>Instructions:</strong><br>
+                    1. Use tools below to select/isolate the object<br>
+                    2. Set depth range to focus on your object<br>
+                    3. Choose reference plane method<br>
+                    4. Calculate volume!
+                </div>
+                
+                <div class="segmentation-tools">
+                    <button class="tool-btn active" id="selectTool">✋ Select Object</button>
+                    <button class="tool-btn" id="eraseTool">🧹 Erase Background</button>
+                    <button class="tool-btn" id="resetTool">↻ Reset</button>
+                    <button class="tool-btn" id="autoSegmentTool">🤖 Auto-Segment</button>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="depthCanvas"></canvas>
+                    <canvas id="maskCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+                </div>
+            </div>
+            
+            <!-- Right Panel: Controls & Results -->
+            <div class="panel">
+                <h3>Volume Calculation</h3>
+                
+                <div class="method-selector">
+                    <label for="volumeMethod">Calculation Method:</label>
+                    <select id="volumeMethod">
+                        <option value="reference_plane">Reference Plane (Recommended)</option>
+                        <option value="convex_hull">Convex Hull</option>
+                        <option value="voxel_count">Voxel Counting</option>
+                        <option value="surface_integration">Surface Integration</option>
+                    </select>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="depthRange">Object Depth Range:</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span>Near:</span>
+                            <input type="range" id="minDepth" min="0" max="5" step="0.01" value="0.2">
+                            <span id="minDepthValue">0.20m</span>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span>Far:</span>
+                            <input type="range" id="maxDepth" min="0.1" max="10" step="0.01" value="2.0">
+                            <span id="maxDepthValue">2.00m</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="referencePlane">Reference Plane:</label>
+                        <select id="referencePlane">
+                            <option value="background">Background Wall</option>
+                            <option value="max_depth">Maximum Depth</option>
+                            <option value="custom">Custom Distance</option>
+                            <option value="ears">Ear Level (Face)</option>
+                        </select>
+                        <input type="range" id="customPlane" min="0.5" max="10" step="0.01" value="3.0" style="display: none;">
+                        <span id="customPlaneValue" style="display: none;">3.00m</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="pixelSize">Pixel Physical Size:</label>
+                        <input type="number" id="pixelSize" value="0.001" step="0.0001" min="0.0001" max="0.01">
+                        <span style="font-size: 12px; color: #666;">meters per pixel (0.001m = 1mm)</span>
+                    </div>
+                    
+                    <button class="tool-btn" onclick="calculateVolume()" style="background: #27ae60; font-size: 16px; padding: 12px 24px;">
+                        🧮 Calculate Volume
+                    </button>
+                </div>
+                
+                <div id="results" class="results" style="display: none;">
+                    <h4>📊 Volume Results</h4>
+                    <div class="volume-display" id="volumeDisplay">0.000 cm³</div>
+                    
+                    <div class="measurement-grid">
+                        <div class="measurement-item">
+                            <div class="measurement-value" id="volumeML">0</div>
+                            <div class="measurement-label">milliliters (mL)</div>
+                        </div>
+                        <div class="measurement-item">
+                            <div class="measurement-value" id="volumeCC">0</div>
+                            <div class="measurement-label">cubic cm (cc)</div>
+                        </div>
+                        <div class="measurement-item">
+                            <div class="measurement-value" id="volumeInches">0</div>
+                            <div class="measurement-label">cubic inches</div>
+                        </div>
+                        <div class="measurement-item">
+                            <div class="measurement-value" id="surfaceArea">0</div>
+                            <div class="measurement-label">surface area (cm²)</div>
+                        </div>
+                        <div class="measurement-item">
+                            <div class="measurement-value" id="objectPixels">0</div>
+                            <div class="measurement-label">object pixels</div>
+                        </div>
+                        <div class="measurement-item">
+                            <div class="measurement-value" id="avgDepth">0</div>
+                            <div class="measurement-label">avg depth (cm)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; padding: 10px; background: white; border-radius: 8px; font-size: 12px;">
+                        <strong>Calculation Details:</strong><br>
+                        <span id="calculationDetails">Method: Reference Plane</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let depthData = null;
+        let originalWidth = 0, originalHeight = 0;
+        let objectMask = null;
+        let currentTool = 'select';
+        let isDrawing = false;
+        
+        // Tool selection
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.id.includes('Tool')) {
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTool = this.id.replace('Tool', '').toLowerCase();
+                }
+            });
+        });
+        
+        // File upload
+        document.getElementById('csvFile').addEventListener('change', handleFile);
+        
+        // Control updates
+        document.getElementById('minDepth').addEventListener('input', updateDepthRange);
+        document.getElementById('maxDepth').addEventListener('input', updateDepthRange);
+        document.getElementById('referencePlane').addEventListener('change', updateReferencePlane);
+        document.getElementById('customPlane').addEventListener('input', updateCustomPlane);
+        
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                parseCSV(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+        
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const data = [];
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+            
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(',');
+                const x = parseInt(row[0]);
+                const y = parseInt(row[1]);
+                const depth = parseFloat(row[2]);
+                
+                if (!isNaN(depth) && isFinite(depth) && depth > 0) {
+                    data.push({ x, y, depth });
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                }
+            }
+            
+            originalWidth = maxX - minX + 1;
+            originalHeight = maxY - minY + 1;
+            
+            // Create 2D depth array
+            depthData = Array(originalHeight).fill().map(() => Array(originalWidth).fill(null));
+            
+            for (const point of data) {
+                depthData[point.y - minY][point.x - minX] = point.depth;
+            }
+            
+            // Initialize mask
+            objectMask = Array(originalHeight).fill().map(() => Array(originalWidth).fill(false));
+            
+            setupCanvas();
+            renderVisualization();
+            
+            document.getElementById('mainContent').style.display = 'grid';
+        }
+        
+        function setupCanvas() {
+            const canvas = document.getElementById('depthCanvas');
+            const maskCanvas = document.getElementById('maskCanvas');
+            
+            canvas.width = Math.min(originalWidth * 2, 600);
+            canvas.height = (canvas.width / originalWidth) * originalHeight;
+            
+            maskCanvas.width = canvas.width;
+            maskCanvas.height = canvas.height;
+            maskCanvas.style.left = canvas.offsetLeft + 'px';
+            maskCanvas.style.top = canvas.offsetTop + 'px';
+            
+            // Mouse events for segmentation
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const canvas = document.getElementById('depthCanvas');
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / canvas.width * originalWidth);
+            const y = Math.floor((e.clientY - rect.top) / canvas.height * originalHeight);
+            
+            if (x >= 0 && x < originalWidth && y >= 0 && y < originalHeight) {
+                if (currentTool === 'select') {
+                    floodFill(x, y, true);
+                } else if (currentTool === 'erase') {
+                    paintRegion(x, y, false, 5);
+                }
+                renderMask();
+            }
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function floodFill(startX, startY, value) {
+            if (!depthData[startY] || depthData[startY][startX] === null) return;
+            
+            const targetDepth = depthData[startY][startX];
+            const threshold = 0.3; // 30cm threshold for similar depths
+            const stack = [[startX, startY]];
+            const visited = new Set();
+            
+            while (stack.length > 0) {
+                const [x, y] = stack.pop();
+                const key = `${x},${y}`;
+                
+                if (visited.has(key) || x < 0 || x >= originalWidth || y < 0 || y >= originalHeight) continue;
+                visited.add(key);
+                
+                const currentDepth = depthData[y][x];
+                if (currentDepth === null || Math.abs(currentDepth - targetDepth) > threshold) continue;
+                
+                objectMask[y][x] = value;
+                
+                // Add neighbors
+                stack.push([x+1, y], [x-1, y], [x, y+1], [x, y-1]);
+            }
+        }
+        
+        function paintRegion(centerX, centerY, value, radius) {
+            for (let y = Math.max(0, centerY - radius); y <= Math.min(originalHeight - 1, centerY + radius); y++) {
+                for (let x = Math.max(0, centerX - radius); x <= Math.min(originalWidth - 1, centerX + radius); x++) {
+                    const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
+                    if (dist <= radius) {
+                        objectMask[y][x] = value;
+                    }
+                }
+            }
+        }
+        
+        function autoSegment() {
+            const minDepth = parseFloat(document.getElementById('minDepth').value);
+            const maxDepth = parseFloat(document.getElementById('maxDepth').value);
+            
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    const depth = depthData[y][x];
+                    if (depth !== null && depth >= minDepth && depth <= maxDepth) {
+                        objectMask[y][x] = true;
+                    } else {
+                        objectMask[y][x] = false;
+                    }
+                }
+            }
+            renderMask();
+        }
+        
+        document.getElementById('autoSegmentTool').addEventListener('click', autoSegment);
+        document.getElementById('resetTool').addEventListener('click', () => {
+            objectMask = Array(originalHeight).fill().map(() => Array(originalWidth).fill(false));
+            renderMask();
+        });
+        
+        function renderVisualization() {
+            const canvas = document.getElementById('depthCanvas');
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            
+            const minDepth = parseFloat(document.getElementById('minDepth').value);
+            const maxDepth = parseFloat(document.getElementById('maxDepth').value);
+            
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    const depth = depthData[y][x];
+                    let color = [0, 0, 0];
+                    
+                    if (depth !== null && depth >= minDepth && depth <= maxDepth) {
+                        const normalized = (depth - minDepth) / (maxDepth - minDepth);
+                        const inverted = 1 - normalized;
+                        color = [
+                            Math.floor(255 * Math.min(1, inverted * 2)),
+                            Math.floor(255 * Math.min(1, inverted < 0.5 ? inverted * 2 : 2 - inverted * 2)),
+                            Math.floor(255 * Math.min(1, (1 - inverted) * 2))
+                        ];
+                    }
+                    
+                    // Scale to canvas
+                    const scaleX = canvas.width / originalWidth;
+                    const scaleY = canvas.height / originalHeight;
+                    
+                    for (let sy = 0; sy < scaleY; sy++) {
+                        for (let sx = 0; sx < scaleX; sx++) {
+                            const pixelX = Math.floor(x * scaleX + sx);
+                            const pixelY = Math.floor(y * scaleY + sy);
+                            const index = (pixelY * canvas.width + pixelX) * 4;
+                            
+                            if (index >= 0 && index < imageData.data.length - 3) {
+                                imageData.data[index] = color[0];
+                                imageData.data[index + 1] = color[1];
+                                imageData.data[index + 2] = color[2];
+                                imageData.data[index + 3] = 255;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            renderMask();
+        }
+        
+        function renderMask() {
+            const canvas = document.getElementById('maskCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const scaleX = canvas.width / originalWidth;
+            const scaleY = canvas.height / originalHeight;
+            
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+            
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    if (objectMask[y][x]) {
+                        ctx.fillRect(x * scaleX, y * scaleY, scaleX, scaleY);
+                    }
+                }
+            }
+        }
+        
+        function updateDepthRange() {
+            const minDepth = parseFloat(document.getElementById('minDepth').value);
+            const maxDepth = parseFloat(document.getElementById('maxDepth').value);
+            
+            document.getElementById('minDepthValue').textContent = minDepth.toFixed(2) + 'm';
+            document.getElementById('maxDepthValue').textContent = maxDepth.toFixed(2) + 'm';
+            
+            renderVisualization();
+        }
+        
+        function updateReferencePlane() {
+            const method = document.getElementById('referencePlane').value;
+            const customControl = document.getElementById('customPlane');
+            const customValue = document.getElementById('customPlaneValue');
+            
+            if (method === 'custom') {
+                customControl.style.display = 'block';
+                customValue.style.display = 'block';
+                updateCustomPlane();
+            } else {
+                customControl.style.display = 'none';
+                customValue.style.display = 'none';
+            }
+        }
+        
+        function updateCustomPlane() {
+            const value = parseFloat(document.getElementById('customPlane').value);
+            document.getElementById('customPlaneValue').textContent = value.toFixed(2) + 'm';
+        }
+        
+        function calculateVolume() {
+            if (!depthData || !objectMask) return;
+            
+            const method = document.getElementById('volumeMethod').value;
+            const pixelSize = parseFloat(document.getElementById('pixelSize').value);
+            const referencePlaneMethod = document.getElementById('referencePlane').value;
+            
+            let referencePlaneDepth;
+            switch (referencePlaneMethod) {
+                case 'background':
+                    referencePlaneDepth = getBackgroundDepth();
+                    break;
+                case 'max_depth':
+                    referencePlaneDepth = getMaxDepthInMask();
+                    break;
+                case 'custom':
+                    referencePlaneDepth = parseFloat(document.getElementById('customPlane').value);
+                    break;
+                case 'ears':
+                    referencePlaneDepth = getEarLevelDepth();
+                    break;
+                default:
+                    referencePlaneDepth = 3.0;
+            }
+            
+            let volume = 0;
+            let surfaceArea = 0;
+            let objectPixelCount = 0;
+            let totalDepth = 0;
+            
+            // Calculate volume using selected method
+            switch (method) {
+                case 'reference_plane':
+                    volume = calculateReferencePlaneVolume(referencePlaneDepth, pixelSize);
+                    break;
+                case 'voxel_count':
+                    volume = calculateVoxelVolume(pixelSize);
+                    break;
+                case 'surface_integration':
+                    volume = calculateSurfaceIntegrationVolume(pixelSize);
+                    break;
+                default:
+                    volume = calculateReferencePlaneVolume(referencePlaneDepth, pixelSize);
+            }
+            
+            // Calculate additional metrics
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    if (objectMask[y][x] && depthData[y][x] !== null) {
+                        objectPixelCount++;
+                        totalDepth += depthData[y][x];
+                        surfaceArea += pixelSize * pixelSize; // Approximate surface area
+                    }
+                }
+            }
+            
+            const avgDepth = objectPixelCount > 0 ? totalDepth / objectPixelCount : 0;
+            
+            // Convert to different units
+            const volumeCm3 = volume * 1e6; // m³ to cm³
+            const volumeML = volumeCm3; // 1 cm³ = 1 mL
+            const volumeInches3 = volumeCm3 / 16.387; // cm³ to cubic inches
+            const surfaceAreaCm2 = surfaceArea * 1e4; // m² to cm²
+            
+            // Display results
+            document.getElementById('volumeDisplay').textContent = volumeCm3.toFixed(2) + ' cm³';
+            document.getElementById('volumeML').textContent = volumeML.toFixed(2);
+            document.getElementById('volumeCC').textContent = volumeCm3.toFixed(2);
+            document.getElementById('volumeInches').textContent = volumeInches3.toFixed(3);
+            document.getElementById('surfaceArea').textContent = surfaceAreaCm2.toFixed(1);
+            document.getElementById('objectPixels').textContent = objectPixelCount.toLocaleString();
+            document.getElementById('avgDepth').textContent = (avgDepth * 100).toFixed(1);
+            
+            document.getElementById('calculationDetails').innerHTML = 
+                `Method: ${method.replace('_', ' ')}<br>` +
+                `Reference Plane: ${referencePlaneDepth.toFixed(2)}m<br>` +
+                `Pixel Size: ${(pixelSize * 1000).toFixed(2)}mm<br>` +
+                `Object Pixels: ${objectPixelCount.toLocaleString()}`;
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function calculateReferencePlaneVolume(referencePlaneDepth, pixelSize) {
+            let volume = 0;
+            
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    if (objectMask[y][x] && depthData[y][x] !== null) {
+                        const depth = depthData[y][x];
+                        if (depth < referencePlaneDepth) {
+                            const height = referencePlaneDepth - depth;
+                            const voxelVolume = pixelSize * pixelSize * height;
+                            volume += voxelVolume;
+                        }
+                    }
+                }
+            }
+            
+            return volume;
+        }
+        
+        function calculateVoxelVolume(pixelSize) {
+            let volume = 0;
+            const voxelSize = pixelSize;
+            
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    if (objectMask[y][x] && depthData[y][x] !== null) {
+                        volume += voxelSize * voxelSize * voxelSize;
+                    }
+                }
+            }
+            
+            return volume;
+        }
+        
+        function calculateSurfaceIntegrationVolume(pixelSize) {
+            // Simplified surface integration - treating each pixel as a small surface element
+            let volume = 0;
+            
+            for (let y = 1; y < originalHeight - 1; y++) {
+                for (let x = 1; x < originalWidth - 1; x++) {
+                    if (objectMask[y][x] && depthData[y][x] !== null) {
+                        // Calculate gradient approximation
+                        const dx = getDepthSafe(x+1, y) - getDepthSafe(x-1, y);
+                        const dy = getDepthSafe(x, y+1) - getDepthSafe(x, y-1);
+                        const depth = depthData[y][x];
+                        
+                        // Approximate volume contribution
+                        const surfaceArea = pixelSize * pixelSize * Math.sqrt(1 + (dx/(2*pixelSize))**2 + (dy/(2*pixelSize))**2);
+                        volume += surfaceArea * depth * 0.1; // Simplified integration
+                    }
+                }
+            }
+            
+            return volume;
+        }
+        
+        function getDepthSafe(x, y) {
+            if (x >= 0 && x < originalWidth && y >= 0 && y < originalHeight && depthData[y][x] !== null) {
+                return depthData[y][x];
+            }
+            return 0;
+        }
+        
+        function getBackgroundDepth() {
+            // Find the most common depth value in non-object areas
+            const backgroundDepths = [];
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    if (!objectMask[y][x] && depthData[y][x] !== null && depthData[y][x] > 2) {
+                        backgroundDepths.push(depthData[y][x]);
+                    }
+                }
+            }
+            
+            if (backgroundDepths.length === 0) return 5.0;
+            
+            backgroundDepths.sort((a, b) => a - b);
+            return backgroundDepths[Math.floor(backgroundDepths.length * 0.9)]; // 90th percentile
+        }
+        
+        function getMaxDepthInMask() {
+            let maxDepth = 0;
+            for (let y = 0; y < originalHeight; y++) {
+                for (let x = 0; x < originalWidth; x++) {
+                    if (objectMask[y][x] && depthData[y][x] !== null) {
+                        maxDepth = Math.max(maxDepth, depthData[y][x]);
+                    }
+                }
+            }
+            return maxDepth;
+        }
+        
+        function getEarLevelDepth() {
+            // For face measurements, estimate ear level as the depth around the edges at middle height
+            const midY = Math.floor(originalHeight / 2);
+            const sampleRegion = Math.floor(originalHeight * 0.1);
+            
+            const earDepths = [];
+            for (let y = midY - sampleRegion; y <= midY + sampleRegion; y++) {
+                for (let x = 0; x < Math.floor(originalWidth * 0.2); x++) {
+                    if (depthData[y] && depthData[y][x] !== null && objectMask[y][x]) {
+                        earDepths.push(depthData[y][x]);
+                    }
+                }
+                for (let x = Math.floor(originalWidth * 0.8); x < originalWidth; x++) {
+                    if (depthData[y] && depthData[y][x] !== null && objectMask[y][x]) {
+                        earDepths.push(depthData[y][x]);
+                    }
+                }
+            }
+            
+            if (earDepths.length === 0) return 1.0;
+            
+            earDepths.sort((a, b) => a - b);
+            return earDepths[Math.floor(earDepths.length * 0.7)]; // 70th percentile
+        }
+        
+        // Initialize
+        updateDepthRange();
+        updateReferencePlane();
+    </script>
+</body>
+</html>
