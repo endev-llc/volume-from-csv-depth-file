@@ -48,7 +48,7 @@
             <div class="controls-section mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                     <div>
-                        <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-2">Upload a new CSV File</label>
+                        <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-2">Upload your CSV Depth File</label>
                         <input type="file" id="csvFile" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
                     </div>
                     <div class="flex items-center justify-center md:justify-start space-x-4">
@@ -57,7 +57,7 @@
                     </div>
                 </div>
                  <div class="mt-4">
-                    <p class="text-sm text-gray-600">The tool has automatically loaded your provided file: <code class="bg-gray-200 text-gray-800 py-1 px-2 rounded">depth_data_of_pre.csv</code></p>
+                    <p class="text-sm text-gray-600">Please select a file to begin. The file must be in CSV format with columns: `x`, `y`, `depth_meters`.</p>
                 </div>
             </div>
 
@@ -82,7 +82,7 @@
 
             <!-- Canvas for Visualization -->
             <div class="canvas-container text-center p-4 bg-gray-200 rounded-lg shadow-inner">
-                <p id="canvas-placeholder" class="text-gray-500 py-24">Visualization will appear here after processing.</p>
+                <p id="canvas-placeholder" class="text-gray-500 py-24">Please upload a CSV file to see the visualization.</p>
                 <canvas id="depthCanvas" class="mx-auto bg-gray-200 rounded-lg hidden" style="max-width: 100%;"></canvas>
             </div>
         </main>
@@ -309,32 +309,8 @@
                     reader.readAsText(file);
                 } else {
                     // If no file is selected, inform the user.
-                    alert('Please select a CSV file first, or the pre-loaded file will be used.');
-                    loadPreloadedFile();
+                    alert('Please select a CSV file to begin.');
                 }
-            };
-            
-            /**
-             * Fetches and processes the pre-loaded CSV file.
-             */
-            const loadPreloadedFile = () => {
-                const preloadedFileName = 'depth_data_of_pre.csv';
-                showLoader(true);
-                fetch(preloadedFileName)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Network response was not ok! Status: ${response.status}`);
-                        }
-                        return response.text();
-                    })
-                    .then(text => {
-                        processData(text);
-                    })
-                    .catch(e => {
-                        console.error('Error fetching pre-loaded file:', e);
-                        alert(`Could not load the file '${preloadedFileName}'. It might not be available. Please try uploading it manually.`);
-                        showLoader(false);
-                    });
             };
 
             // --- Attach Event Listeners ---
@@ -347,9 +323,6 @@
                 requestAnimationFrame(renderCanvas);
             });
             
-            // --- Initial Load ---
-            // Automatically trigger processing for the user-provided file on page load.
-            loadPreloadedFile();
         });
     </script>
 
