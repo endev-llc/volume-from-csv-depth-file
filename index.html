@@ -96,6 +96,11 @@
             width: 150px;
         }
         
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
         .stats {
             background: #f8f9fa;
             padding: 20px;
@@ -168,6 +173,19 @@
             color: #667eea;
             font-size: 18px;
         }
+        
+        .overlay-controls {
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -189,6 +207,26 @@
         
         <div id="results" style="display: none;">
             <div class="stats" id="stats"></div>
+            
+            <div class="overlay-controls">
+                <h4 style="margin: 0 0 10px 0; color: #555;">📍 Coordinate Overlay Settings</h4>
+                <div class="controls" style="margin: 0;">
+                    <div class="control-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="showOverlay" checked>
+                            <label for="showOverlay">Show Coordinates & Depth Values</label>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="overlaySpacing">Overlay Spacing: <span id="overlaySpacingValue">50</span> pixels</label>
+                        <input type="range" id="overlaySpacing" min="20" max="150" step="10" value="50">
+                    </div>
+                    <div class="control-group">
+                        <label for="fontSize">Text Size: <span id="fontSizeValue">10</span>px</label>
+                        <input type="range" id="fontSize" min="8" max="16" step="1" value="10">
+                    </div>
+                </div>
+            </div>
             
             <div class="controls">
                 <div class="control-group">
@@ -239,6 +277,8 @@
         let depthData = null;
         let originalWidth = 0;
         let originalHeight = 0;
+        let rawDataPoints = []; // Store original x,y,depth points
+        let minX = 0, minY = 0; // Store offset values
         
         // Color maps
         const colormaps = {
@@ -310,6 +350,19 @@
         document.getElementById('minDepth').addEventListener('input', updateDepthRange);
         document.getElementById('maxDepth').addEventListener('input', updateDepthRange);
         document.getElementById('scale').addEventListener('change', renderDepthMap);
+        document.getElementById('showOverlay').addEventListener('change', renderDepthMap);
+        document.getElementById('overlaySpacing').addEventListener('input', updateOverlaySettings);
+        document.getElementById('fontSize').addEventListener('input', updateOverlaySettings);
+        
+        function updateOverlaySettings() {
+            const spacing = document.getElementById('overlaySpacing').value;
+            const fontSize = document.getElementById('fontSize').value;
+            
+            document.getElementById('overlaySpacingValue').textContent = spacing;
+            document.getElementById('fontSizeValue').textContent = fontSize;
+            
+            renderDepthMap();
+        }
         
         function updateDepthRange() {
             const minDepth = parseFloat(document.getElementById('minDepth').value);
@@ -344,8 +397,9 @@
             const header = lines[0].split(',');
             
             const data = [];
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
+            rawDataPoints = []; // Reset raw data points
+            let tempMinX = Infinity, maxX = -Infinity;
+            let tempMinY = Infinity, maxY = -Infinity;
             let minDepth = Infinity, maxDepth = -Infinity;
             let validCount = 0;
             
@@ -356,16 +410,22 @@
                 const depth = parseFloat(row[2]);
                 
                 if (!isNaN(depth) && isFinite(depth) && depth > 0) {
-                    data.push({ x, y, depth });
-                    minX = Math.min(minX, x);
+                    const point = { x, y, depth };
+                    data.push(point);
+                    rawDataPoints.push(point); // Store original coordinates
+                    tempMinX = Math.min(tempMinX, x);
                     maxX = Math.max(maxX, x);
-                    minY = Math.min(minY, y);
+                    tempMinY = Math.min(tempMinY, y);
                     maxY = Math.max(maxY, y);
                     minDepth = Math.min(minDepth, depth);
                     maxDepth = Math.max(maxDepth, depth);
                     validCount++;
                 }
             }
+            
+            // Store global offset values
+            minX = tempMinX;
+            minY = tempMinY;
             
             originalWidth = maxX - minX + 1;
             originalHeight = maxY - minY + 1;
@@ -427,6 +487,13 @@
             maxSlider.value = Math.min(maxDepth, 5);
             
             updateDepthRange();
+            updateOverlaySettings();
+        }
+        
+        function getContrastColor(r, g, b) {
+            // Calculate luminance
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.5 ? 'black' : 'white';
         }
         
         function renderDepthMap() {
@@ -438,6 +505,9 @@
             const colormap = colormaps[document.getElementById('colormap').value];
             const minDepth = parseFloat(document.getElementById('minDepth').value);
             const maxDepth = parseFloat(document.getElementById('maxDepth').value);
+            const showOverlay = document.getElementById('showOverlay').checked;
+            const overlaySpacing = parseInt(document.getElementById('overlaySpacing').value);
+            const fontSize = parseInt(document.getElementById('fontSize').value);
             
             canvas.width = originalWidth * scale;
             canvas.height = originalHeight * scale;
@@ -473,6 +543,60 @@
             }
             
             ctx.putImageData(imageData, 0, 0);
+            
+            // Add coordinate overlays if enabled
+            if (showOverlay && rawDataPoints.length > 0) {
+                ctx.font = `${fontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Sample points at regular intervals
+                const stepX = Math.max(1, Math.floor(overlaySpacing / scale));
+                const stepY = Math.max(1, Math.floor(overlaySpacing / scale));
+                
+                for (let y = 0; y < originalHeight; y += stepY) {
+                    for (let x = 0; x < originalWidth; x += stepX) {
+                        const depth = depthData[y][x];
+                        
+                        if (depth !== null && depth >= minDepth && depth <= maxDepth) {
+                            const pixelX = (x + 0.5) * scale;
+                            const pixelY = (y + 0.5) * scale;
+                            
+                            // Calculate original coordinates directly
+                            const originalX = x + minX;
+                            const originalY = y + minY;
+                            
+                            // Get background color for contrast
+                            const t = (depth - minDepth) / (maxDepth - minDepth);
+                            const bgColor = interpolateColor(colormap, 1 - t);
+                            const textColor = getContrastColor(bgColor[0], bgColor[1], bgColor[2]);
+                            
+                            // Create text with background for better visibility
+                            const text1 = `(${originalX},${originalY})`;
+                            const text2 = `${depth.toFixed(2)}m`;
+                            
+                            // Add semi-transparent background
+                            const textMetrics1 = ctx.measureText(text1);
+                            const textMetrics2 = ctx.measureText(text2);
+                            const maxWidth = Math.max(textMetrics1.width, textMetrics2.width);
+                            const padding = 2;
+                            
+                            ctx.fillStyle = textColor === 'white' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)';
+                            ctx.fillRect(
+                                pixelX - maxWidth/2 - padding, 
+                                pixelY - fontSize - padding, 
+                                maxWidth + 2*padding, 
+                                fontSize * 2 + 2*padding
+                            );
+                            
+                            // Draw text
+                            ctx.fillStyle = textColor;
+                            ctx.fillText(text1, pixelX, pixelY - fontSize/2);
+                            ctx.fillText(text2, pixelX, pixelY + fontSize/2);
+                        }
+                    }
+                }
+            }
         }
         
         function downloadImage(format) {
