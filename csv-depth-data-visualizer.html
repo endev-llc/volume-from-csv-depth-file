@@ -508,31 +508,33 @@
             const showOverlay = document.getElementById('showOverlay').checked;
             const overlaySpacing = parseInt(document.getElementById('overlaySpacing').value);
             const fontSize = parseInt(document.getElementById('fontSize').value);
-            
-            canvas.width = originalWidth * scale;
-            canvas.height = originalHeight * scale;
-            
+
+            // Swap width and height for portrait mode
+            canvas.width = originalHeight * scale;
+            canvas.height = originalWidth * scale;
+
             const imageData = ctx.createImageData(canvas.width, canvas.height);
-            
+
+            // Draw rotated image data (180° from current orientation, i.e., 270° from original)
             for (let y = 0; y < originalHeight; y++) {
                 for (let x = 0; x < originalWidth; x++) {
                     const depth = depthData[y][x];
                     let color;
-                    
+
                     if (depth === null || depth < minDepth || depth > maxDepth) {
                         color = [0, 0, 0]; // Black for invalid/out-of-range
                     } else {
                         const t = (depth - minDepth) / (maxDepth - minDepth);
                         color = interpolateColor(colormap, 1 - t); // Invert: closer = hot, farther = cool
                     }
-                    
-                    // Scale up the pixel
+
+                    // Rotate (x, y) 270° clockwise to (originalHeight - 1 - y, x)
                     for (let sy = 0; sy < scale; sy++) {
                         for (let sx = 0; sx < scale; sx++) {
-                            const pixelX = x * scale + sx;
-                            const pixelY = y * scale + sy;
+                            const pixelX = ((originalHeight - 1 - y) * scale) + sy;
+                            const pixelY = (x * scale) + sx;
                             const index = (pixelY * canvas.width + pixelX) * 4;
-                            
+
                             imageData.data[index] = color[0];     // R
                             imageData.data[index + 1] = color[1]; // G
                             imageData.data[index + 2] = color[2]; // B
@@ -541,46 +543,47 @@
                     }
                 }
             }
-            
+
             ctx.putImageData(imageData, 0, 0);
-            
+
             // Add coordinate overlays if enabled
             if (showOverlay && rawDataPoints.length > 0) {
                 ctx.font = `${fontSize}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                
+
                 // Sample points at regular intervals
                 const stepX = Math.max(1, Math.floor(overlaySpacing / scale));
                 const stepY = Math.max(1, Math.floor(overlaySpacing / scale));
-                
+
                 for (let y = 0; y < originalHeight; y += stepY) {
                     for (let x = 0; x < originalWidth; x += stepX) {
                         const depth = depthData[y][x];
-                        
+
                         if (depth !== null && depth >= minDepth && depth <= maxDepth) {
-                            const pixelX = (x + 0.5) * scale;
-                            const pixelY = (y + 0.5) * scale;
-                            
+                            // Rotated coordinates (270° from original)
+                            const pixelX = (originalHeight - 1 - y + 0.5) * scale;
+                            const pixelY = (x + 0.5) * scale;
+
                             // Calculate original coordinates directly
                             const originalX = x + minX;
                             const originalY = y + minY;
-                            
+
                             // Get background color for contrast
                             const t = (depth - minDepth) / (maxDepth - minDepth);
                             const bgColor = interpolateColor(colormap, 1 - t);
                             const textColor = getContrastColor(bgColor[0], bgColor[1], bgColor[2]);
-                            
+
                             // Create text with background for better visibility
                             const text1 = `(${originalX},${originalY})`;
                             const text2 = `${depth.toFixed(2)}m`;
-                            
+
                             // Add semi-transparent background
                             const textMetrics1 = ctx.measureText(text1);
                             const textMetrics2 = ctx.measureText(text2);
                             const maxWidth = Math.max(textMetrics1.width, textMetrics2.width);
                             const padding = 2;
-                            
+
                             ctx.fillStyle = textColor === 'white' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)';
                             ctx.fillRect(
                                 pixelX - maxWidth/2 - padding, 
@@ -588,7 +591,7 @@
                                 maxWidth + 2*padding, 
                                 fontSize * 2 + 2*padding
                             );
-                            
+
                             // Draw text
                             ctx.fillStyle = textColor;
                             ctx.fillText(text1, pixelX, pixelY - fontSize/2);
