@@ -167,12 +167,7 @@
             text-align: center;
             font-weight: bold;
             margin-bottom: 15px;
-        }
-        
-        .cross-section-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            font-size: 20px;
         }
         
         .loading {
@@ -228,7 +223,6 @@
         <div class="sidebar">
             <h1>🔬 3D Volume Analyzer</h1>
             
-            <!-- File Upload -->
             <div class="section">
                 <h3>📁 Data Input</h3>
                 <div class="file-input" onclick="document.getElementById('csvFile').click()">
@@ -241,97 +235,71 @@
                 </div>
             </div>
             
-            <!-- Data Statistics -->
             <div class="section" id="statsSection" style="display: none;">
-                <h3>📊 Data Statistics</h3>
+                <h3>📊 Raw Data Statistics</h3>
                 <div class="stats-grid" id="statsGrid"></div>
             </div>
+
+            <div class="section" id="isolationSection" style="display: none;">
+                <h3>✂️ Object Isolation</h3>
+                <div class="control-group">
+                    <label>Depth Range Filter (meters): <span class="value-display" id="depthFilterValue">0-1</span></label>
+                    <input type="range" id="minDepthFilter" min="0" max="5" step="0.05" value="0">
+                    <input type="range" id="maxDepthFilter" min="0" max="5" step="0.05" value="1">
+                </div>
+                 <div class="control-group">
+                    <label>Points After Filtering: <span class="value-display" id="filteredPointsCount">0</span></label>
+                </div>
+            </div>
+
+            <div class="section" id="advancedSection" style="display: none;">
+                <h3>⚙️ Calibration</h3>
+                <div class="control-group">
+                    <label>Camera FOV (Horiz.): <span class="value-display" id="fovValue">62</span>°</label>
+                    <input type="range" id="cameraFov" min="40" max="90" step="1" value="62">
+                </div>
+            </div>
             
-            <!-- Visualization Controls -->
+            <div class="section" id="volumeSection" style="display: none;">
+                <h3>📐 Volume Calculation</h3>
+                <div class="method-tabs">
+                    <div class="tab active" data-method="voxel">Voxel</div>
+                    <div class="tab" data-method="mesh">Mesh</div>
+                    <div class="tab" data-method="convex">Convex Hull</div>
+                </div>
+                <div class="volume-result" id="volumeResult">
+                    Volume: 0 cm³
+                </div>
+                <div class="control-group" id="voxelControl">
+                    <label>Voxel Size: <span class="value-display" id="voxelSizeValue">0.005</span>m</label>
+                    <input type="range" id="voxelSize" min="0.001" max="0.05" step="0.001" value="0.005">
+                </div>
+            </div>
+
             <div class="section" id="vizSection" style="display: none;">
                 <h3>👁️ Visualization</h3>
-                
                 <div class="checkbox-group">
                     <input type="checkbox" id="showPointCloud" checked>
                     <label for="showPointCloud">Point Cloud</label>
                 </div>
-                
                 <div class="checkbox-group">
                     <input type="checkbox" id="showMesh" checked>
                     <label for="showMesh">Mesh Surface</label>
                 </div>
-                
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showWireframe">
-                    <label for="showWireframe">Wireframe</label>
-                </div>
-                
-                <div class="checkbox-group">
-                    <input type="checkbox" id="showCrossSection">
-                    <label for="showCrossSection">Cross Section</label>
-                </div>
-                
                 <div class="control-group">
                     <label>Point Size: <span class="value-display" id="pointSizeValue">2</span></label>
                     <input type="range" id="pointSize" min="1" max="10" step="1" value="2">
                 </div>
-                
                 <div class="control-group">
                     <label>Mesh Resolution: <span class="value-display" id="meshResValue">1</span></label>
                     <input type="range" id="meshResolution" min="1" max="5" step="1" value="1">
                 </div>
             </div>
             
-            <!-- Cross Section Controls -->
-            <div class="section" id="crossSectionControls" style="display: none;">
-                <h3>✂️ Cross Section</h3>
-                
-                <div class="control-group">
-                    <label>Plane: <span class="value-display" id="crossPlaneValue">XY</span></label>
-                    <select id="crossPlane" style="width: 100%; padding: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid #666;">
-                        <option value="xy">XY Plane</option>
-                        <option value="xz">XZ Plane</option>
-                        <option value="yz">YZ Plane</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <label>Position: <span class="value-display" id="crossPosValue">0</span></label>
-                    <input type="range" id="crossPosition" min="-100" max="100" step="1" value="0">
-                </div>
-            </div>
-            
-            <!-- Volume Calculation -->
-            <div class="section" id="volumeSection" style="display: none;">
-                <h3>📐 Volume Calculation</h3>
-                
-                <div class="method-tabs">
-                    <div class="tab active" data-method="convex">Convex Hull</div>
-                    <div class="tab" data-method="voxel">Voxel</div>
-                    <div class="tab" data-method="mesh">Mesh</div>
-                </div>
-                
-                <div class="volume-result" id="volumeResult">
-                    Volume: Calculating...
-                </div>
-                
-                <div class="control-group">
-                    <label>Voxel Size: <span class="value-display" id="voxelSizeValue">0.01</span>m</label>
-                    <input type="range" id="voxelSize" min="0.005" max="0.1" step="0.005" value="0.01">
-                </div>
-                
-                <div class="control-group">
-                    <label>Depth Filter: <span class="value-display" id="depthFilterValue">0-10</span>m</label>
-                    <input type="range" id="minDepthFilter" min="0" max="10" step="0.1" value="0">
-                    <input type="range" id="maxDepthFilter" min="0" max="10" step="0.1" value="10">
-                </div>
-            </div>
-            
-            <!-- Algorithm Info -->
             <div class="section" id="algorithmInfo">
                 <h3>🧮 Algorithm Details</h3>
                 <div id="algorithmDescription" style="font-size: 12px; line-height: 1.4;">
-                    Upload data to see calculation methods and mathematical details.
+                    Upload data to see calculation methods. The Voxel method is generally the most reliable for non-watertight objects.
                 </div>
             </div>
         </div>
@@ -340,766 +308,501 @@
             <canvas id="renderCanvas"></canvas>
             <div class="loading" id="loading" style="display: none;">
                 <div class="spinner"></div>
-                <div>Processing 3D reconstruction...</div>
+                <div id="loadingText">Processing...</div>
             </div>
         </div>
     </div>
 
     <script>
-        // Global variables
+        // --- Global State ---
         let scene, camera, renderer, controls;
-        let pointCloud, meshSurface, wireframeMesh, crossSectionPlane;
-        let depthData = [];
-        let pointCloudData = [];
-        let meshData = { vertices: [], faces: [] };
-        let stats = {};
-        let currentMethod = 'convex';
+        let pointCloud, meshSurface;
         
-        // Initialize Three.js scene
+        let rawDepthData = [], filteredDepthData = [], metricPointCloud = [], vizPointCloud = [];
+        
+        let stats = {};
+        let currentMethod = 'voxel';
+
+        // --- Initialization ---
         function initThreeJS() {
             const canvas = document.getElementById('renderCanvas');
             const container = canvas.parentElement;
             
-            // Scene setup
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a0a);
             
-            // Camera setup
             camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.01, 1000);
-            camera.position.set(2, 2, 2);
+            camera.position.set(0.5, 0.5, 0.5);
+            camera.lookAt(0, 0, 0);
             
-            // Renderer setup
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
-            
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 10, 5);
+            directionalLight.position.set(1, 1, 1);
             scene.add(directionalLight);
             
-            // Basic orbit controls (simplified)
             setupBasicControls();
-            
-            // Add coordinate axes
-            const axesHelper = new THREE.AxesHelper(0.5);
-            scene.add(axesHelper);
-            
-            // Animation loop
+            scene.add(new THREE.AxesHelper(0.5));
             animate();
             
-            // Handle window resize
             window.addEventListener('resize', onWindowResize);
         }
-        
-        function setupBasicControls() {
-            let isMouseDown = false;
-            let mouseX = 0, mouseY = 0;
-            let targetRotationX = 0, targetRotationY = 0;
-            let rotationX = 0, rotationY = 0;
-            
-            const canvas = renderer.domElement;
-            
-            canvas.addEventListener('mousedown', (event) => {
-                isMouseDown = true;
-                mouseX = event.clientX;
-                mouseY = event.clientY;
-            });
-            
-            canvas.addEventListener('mousemove', (event) => {
-                if (!isMouseDown) return;
-                
-                const deltaX = event.clientX - mouseX;
-                const deltaY = event.clientY - mouseY;
-                
-                targetRotationY += deltaX * 0.01;
-                targetRotationX += deltaY * 0.01;
-                
-                mouseX = event.clientX;
-                mouseY = event.clientY;
-            });
-            
-            canvas.addEventListener('mouseup', () => {
-                isMouseDown = false;
-            });
-            
-            canvas.addEventListener('wheel', (event) => {
-                const scale = event.deltaY > 0 ? 1.1 : 0.9;
-                camera.position.multiplyScalar(scale);
-                camera.position.x = Math.max(-10, Math.min(10, camera.position.x));
-                camera.position.y = Math.max(-10, Math.min(10, camera.position.y));
-                camera.position.z = Math.max(0.1, Math.min(10, camera.position.z));
-            });
-            
-            function updateCamera() {
-                rotationX += (targetRotationX - rotationX) * 0.1;
-                rotationY += (targetRotationY - rotationY) * 0.1;
-                
-                const radius = camera.position.length();
-                camera.position.x = radius * Math.sin(rotationY) * Math.cos(rotationX);
-                camera.position.y = radius * Math.sin(rotationX);
-                camera.position.z = radius * Math.cos(rotationY) * Math.cos(rotationX);
-                
-                camera.lookAt(0, 0, 0);
-                
-                requestAnimationFrame(updateCamera);
-            }
-            updateCamera();
-        }
-        
-        function onWindowResize() {
-            const container = document.querySelector('.main-view');
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
-        }
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        
-        // File handling
-        document.getElementById('csvFile').addEventListener('change', handleFileUpload);
-        
+
+        // --- Main Data Processing Pipeline ---
         async function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
-            // Check file size
-            const fileSizeMB = file.size / (1024 * 1024);
-            if (fileSizeMB > 100) {
-                if (!confirm(`Large file detected (${fileSizeMB.toFixed(1)}MB). Processing may take some time. Continue?`)) {
-                    return;
-                }
-            }
-            
-            showLoading(true);
+
+            showLoading(true, 'Parsing CSV...');
             updateProgress(0);
-            
+
             try {
-                console.log(`Processing file: ${file.name} (${fileSizeMB.toFixed(1)}MB)`);
-                
                 const text = await file.text();
                 updateProgress(20);
                 
                 await parseCSVData(text);
                 updateProgress(40);
                 
-                await generatePointCloud();
-                updateProgress(60);
-                
-                await generateMesh();
-                updateProgress(80);
-                
-                calculateVolume();
-                updateProgress(100);
-                
                 showUI();
-                updateVisualization();
-                
-                console.log(`Processing complete: ${stats.pointCount.toLocaleString()} points processed`);
-                
+                await processAndCalculate();
+
             } catch (error) {
                 console.error('Error processing file:', error);
-                let errorMessage = 'Error processing file.';
-                
-                if (error.message.includes('memory')) {
-                    errorMessage = 'File too large for available memory. Try a smaller file or increase mesh resolution to reduce complexity.';
-                } else if (error.message.includes('stack')) {
-                    errorMessage = 'File processing error. The file may be too large or improperly formatted.';
-                }
-                
-                alert(errorMessage + ' Check the console for details.');
+                alert('Error processing file. Check console for details.');
             } finally {
                 showLoading(false);
             }
         }
-        
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
-        }
-        
-        function updateProgress(percent) {
-            document.getElementById('progressFill').style.width = percent + '%';
-        }
-        
-        function showUI() {
-            document.getElementById('statsSection').style.display = 'block';
-            document.getElementById('vizSection').style.display = 'block';
-            document.getElementById('volumeSection').style.display = 'block';
-        }
-        
+
         async function parseCSVData(text) {
-            const lines = text.trim().split('\n');
-            depthData = [];
-            
-            // Initialize min/max values for efficient calculation
-            let minDepth = Infinity, maxDepth = -Infinity;
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let depthSum = 0;
-            
-            // Skip header row and process data in chunks for large files
-            const totalLines = lines.length - 1;
-            const chunkSize = 1000;
-            
-            for (let start = 1; start < lines.length; start += chunkSize) {
-                const end = Math.min(start + chunkSize, lines.length);
+            return new Promise(resolve => {
+                const lines = text.trim().split('\n');
+                rawDepthData = [];
                 
-                for (let i = start; i < end; i++) {
+                let minDepth = Infinity, maxDepth = -Infinity;
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                
+                for (let i = 1; i < lines.length; i++) {
                     const cols = lines[i].split(',');
                     if (cols.length >= 3) {
                         const x = parseInt(cols[0]);
                         const y = parseInt(cols[1]);
                         const depth = parseFloat(cols[2]);
                         
-                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0) {
-                            depthData.push({ x, y, depth });
-                            
-                            // Update min/max values efficiently
+                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0 && isFinite(depth)) {
+                            rawDepthData.push({ x, y, depth });
                             minDepth = Math.min(minDepth, depth);
                             maxDepth = Math.max(maxDepth, depth);
                             minX = Math.min(minX, x);
                             maxX = Math.max(maxX, x);
                             minY = Math.min(minY, y);
                             maxY = Math.max(maxY, y);
-                            depthSum += depth;
                         }
                     }
                 }
                 
-                // Update progress for large files
-                if (totalLines > 10000) {
-                    const progress = 20 + (start / totalLines) * 20; // 20-40% range
-                    updateProgress(progress);
-                    await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI updates
-                }
+                stats = {
+                    pointCount: rawDepthData.length,
+                    minDepth: minDepth,
+                    maxDepth: maxDepth,
+                    // *** FIX: Calculate the full image dimensions from the max coordinates,
+                    // not the bounding box of the valid points. This is crucial.
+                    imageWidth: maxX + 1,
+                    imageHeight: maxY + 1,
+                };
+                
+                updateStatsDisplay();
+                resolve();
+            });
+        }
+
+        async function processAndCalculate() {
+            if (rawDepthData.length === 0) return;
+
+            showLoading(true, 'Isolating object...');
+            await new Promise(r => setTimeout(r, 10));
+
+            filterDepthData();
+            document.getElementById('filteredPointsCount').textContent = filteredDepthData.length.toLocaleString();
+
+            if (filteredDepthData.length === 0) {
+                showLoading(false);
+                alert("No data points remain after filtering. Adjust the depth range.");
+                return;
             }
-            
-            // Calculate final statistics
-            stats = {
-                pointCount: depthData.length,
-                minDepth: minDepth,
-                maxDepth: maxDepth,
-                avgDepth: depthSum / depthData.length,
-                minX: minX,
-                maxX: maxX,
-                minY: minY,
-                maxY: maxY,
-                rangeX: maxX - minX,
-                rangeY: maxY - minY
-            };
-            
-            updateStatsDisplay();
+
+            showLoading(true, 'Creating metric model...');
+            await new Promise(r => setTimeout(r, 10));
+            createMetricPointCloud();
+
+            showLoading(true, 'Calculating volume...');
+            await new Promise(r => setTimeout(r, 10));
+            calculateVolume();
+
+            showLoading(true, 'Generating visualization...');
+            await new Promise(r => setTimeout(r, 10));
+            createVisualizationData();
+            updateVisualization();
+
+            showLoading(false);
         }
-        
-        function updateStatsDisplay() {
-            const grid = document.getElementById('statsGrid');
-            grid.innerHTML = `
-                <div class="stat-item">
-                    <div class="stat-value">${stats.pointCount.toLocaleString()}</div>
-                    <div class="stat-label">Points</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${stats.rangeX}×${stats.rangeY}</div>
-                    <div class="stat-label">Resolution</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${stats.minDepth.toFixed(3)}m</div>
-                    <div class="stat-label">Min Depth</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${stats.maxDepth.toFixed(3)}m</div>
-                    <div class="stat-label">Max Depth</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${stats.avgDepth.toFixed(3)}m</div>
-                    <div class="stat-label">Avg Depth</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">${(stats.maxDepth - stats.minDepth).toFixed(3)}m</div>
-                    <div class="stat-label">Depth Range</div>
-                </div>
-            `;
+
+        function filterDepthData() {
+            const minDepth = parseFloat(document.getElementById('minDepthFilter').value);
+            const maxDepth = parseFloat(document.getElementById('maxDepthFilter').value);
+            
+            filteredDepthData = rawDepthData.filter(p => p.depth >= minDepth && p.depth <= maxDepth);
         }
-        
-        async function generatePointCloud() {
-            pointCloudData = [];
-            
-            // Normalize coordinates and convert to 3D points
-            const centerX = (stats.maxX + stats.minX) / 2;
-            const centerY = (stats.maxY + stats.minY) / 2;
-            const scaleX = 2.0 / stats.rangeX;
-            const scaleY = 2.0 / stats.rangeY;
-            const scaleZ = 2.0 / (stats.maxDepth - stats.minDepth);
-            
-            // Process in chunks for large datasets
-            const chunkSize = 5000;
-            const totalPoints = depthData.length;
-            
-            for (let start = 0; start < totalPoints; start += chunkSize) {
-                const end = Math.min(start + chunkSize, totalPoints);
-                
-                for (let i = start; i < end; i++) {
-                    const point = depthData[i];
-                    const x = (point.x - centerX) * scaleX;
-                    const y = (point.y - centerY) * scaleY;
-                    const z = -(point.depth - stats.minDepth) * scaleZ; // Negative for correct orientation
-                    
-                    pointCloudData.push({ x, y, z, originalDepth: point.depth });
-                }
-                
-                // Update progress for large datasets
-                if (totalPoints > 20000) {
-                    const progress = 40 + (start / totalPoints) * 20; // 40-60% range
-                    updateProgress(progress);
-                    await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI updates
-                }
+
+        function createMetricPointCloud() {
+            metricPointCloud = [];
+            if (filteredDepthData.length === 0) return;
+
+            // *** FIX: Use the correct full imageWidth and imageHeight from stats.
+            const imageWidth = stats.imageWidth;
+            const imageHeight = stats.imageHeight;
+
+            const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
+            const focalLength = (imageWidth / 2) / Math.tan(fov / 2);
+
+            for (const p of filteredDepthData) {
+                const z = p.depth;
+                // The projection now uses the correct principal point (imageWidth/2)
+                // relative to the absolute pixel coordinates (p.x).
+                const x = (p.x - imageWidth / 2) * z / focalLength;
+                const y = -(p.y - imageHeight / 2) * z / focalLength;
+
+                metricPointCloud.push(new THREE.Vector3(x, y, z));
             }
         }
-        
-        async function generateMesh() {
-            // Simple mesh generation using neighboring points
-            const resolution = parseInt(document.getElementById('meshResolution').value);
-            meshData = { vertices: [], faces: [] };
-            
-            // Limit mesh complexity for performance
-            const maxMeshPoints = 10000;
-            const shouldDecimate = depthData.length > maxMeshPoints;
-            const decimationFactor = shouldDecimate ? Math.ceil(depthData.length / maxMeshPoints) : 1;
-            
-            // Create a grid-based mesh
-            const gridData = {};
-            
-            // Organize points into a grid with optional decimation
-            for (let i = 0; i < depthData.length; i += decimationFactor) {
-                const point = depthData[i];
-                const gridX = Math.floor(point.x / resolution);
-                const gridY = Math.floor(point.y / resolution);
-                const key = `${gridX},${gridY}`;
-                
-                if (!gridData[key] || gridData[key].depth > point.depth) {
-                    gridData[key] = { ...point, gridX, gridY };
-                }
-            }
-            
-            // Convert grid to vertices and faces
-            const gridPoints = Object.values(gridData);
-            const vertexMap = {};
-            
-            // Check if we have too many grid points
-            if (gridPoints.length > 15000) {
-                console.warn(`Large mesh detected (${gridPoints.length} points). Consider increasing mesh resolution for better performance.`);
-            }
-            
-            // Normalize grid points
-            const centerX = (stats.maxX + stats.minX) / 2;
-            const centerY = (stats.maxY + stats.minY) / 2;
-            const scaleX = 2.0 / stats.rangeX;
-            const scaleY = 2.0 / stats.rangeY;
-            const scaleZ = 2.0 / (stats.maxDepth - stats.minDepth);
-            
-            // Create vertices
-            for (const point of gridPoints) {
-                const x = (point.x - centerX) * scaleX;
-                const y = (point.y - centerY) * scaleY;
-                const z = -(point.depth - stats.minDepth) * scaleZ;
-                
-                const vertexIndex = meshData.vertices.length / 3;
-                meshData.vertices.push(x, y, z);
-                vertexMap[`${point.gridX},${point.gridY}`] = vertexIndex;
-            }
-            
-            // Generate faces by connecting neighboring grid points
-            let faceCount = 0;
-            const maxFaces = 30000; // Limit faces for performance
-            
-            // Find grid bounds for more efficient face generation
-            let minGridX = Infinity, maxGridX = -Infinity;
-            let minGridY = Infinity, maxGridY = -Infinity;
-            
-            for (const point of gridPoints) {
-                minGridX = Math.min(minGridX, point.gridX);
-                maxGridX = Math.max(maxGridX, point.gridX);
-                minGridY = Math.min(minGridY, point.gridY);
-                maxGridY = Math.max(maxGridY, point.gridY);
-            }
-            
-            // Generate faces more systematically
-            for (let gx = minGridX; gx < maxGridX && faceCount < maxFaces; gx++) {
-                for (let gy = minGridY; gy < maxGridY && faceCount < maxFaces; gy++) {
-                    const current = vertexMap[`${gx},${gy}`];
-                    const right = vertexMap[`${gx+1},${gy}`];
-                    const down = vertexMap[`${gx},${gy+1}`];
-                    const diag = vertexMap[`${gx+1},${gy+1}`];
-                    
-                    // Create triangular faces with proper winding order
-                    if (current !== undefined && right !== undefined && down !== undefined) {
-                        meshData.faces.push(current, down, right);
-                        faceCount++;
-                    }
-                    if (right !== undefined && down !== undefined && diag !== undefined && faceCount < maxFaces) {
-                        meshData.faces.push(right, down, diag);
-                        faceCount++;
-                    }
-                }
-            }
-            
-            console.log(`Generated mesh: ${meshData.vertices.length / 3} vertices, ${meshData.faces.length / 3} faces`);
-            
-            // If no faces were generated, try with lower resolution
-            if (meshData.faces.length === 0 && resolution > 1) {
-                console.warn(`No faces generated with resolution ${resolution}. Data may be too sparse. Try reducing mesh resolution.`);
-            }
-        }
-        
+
         function calculateVolume() {
-            let volume = 0;
-            
+            let volumeM3 = 0;
+
+            if (metricPointCloud.length < 4) {
+                updateVolumeDisplay(0);
+                return;
+            }
+
             switch (currentMethod) {
-                case 'convex':
-                    volume = calculateConvexHullVolume();
-                    break;
                 case 'voxel':
-                    volume = calculateVoxelVolume();
+                    volumeM3 = calculateVoxelVolume();
                     break;
                 case 'mesh':
-                    volume = calculateMeshVolume();
+                    volumeM3 = calculateMeshVolume();
+                    break;
+                case 'convex':
+                    volumeM3 = calculateConvexHullVolume();
                     break;
             }
             
-            updateVolumeDisplay(volume);
+            updateVolumeDisplay(volumeM3);
             updateAlgorithmInfo();
         }
-        
-        function calculateConvexHullVolume() {
-            // Simplified convex hull volume calculation
-            // This is an approximation for demonstration
-            if (pointCloudData.length < 4) return 0;
-            
-            // Find bounding box volume efficiently without spread operator
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let minZ = Infinity, maxZ = -Infinity;
-            
-            for (const point of pointCloudData) {
-                minX = Math.min(minX, point.x);
-                maxX = Math.max(maxX, point.x);
-                minY = Math.min(minY, point.y);
-                maxY = Math.max(maxY, point.y);
-                minZ = Math.min(minZ, point.z);
-                maxZ = Math.max(maxZ, point.z);
-            }
-            
-            const width = maxX - minX;
-            const height = maxY - minY;
-            const depth = maxZ - minZ;
-            
-            // Approximate convex hull as 60% of bounding box volume
-            return width * height * depth * 0.6;
-        }
-        
+
         function calculateVoxelVolume() {
             const voxelSize = parseFloat(document.getElementById('voxelSize').value);
-            const voxelVolume = voxelSize * voxelSize * voxelSize;
-            
-            // Create voxel grid using Map for better performance with large datasets
-            const voxels = new Map();
-            
-            for (const point of pointCloudData) {
+            if (voxelSize <= 0) return 0;
+
+            const voxelVolume = Math.pow(voxelSize, 3);
+            const voxels = new Set();
+
+            for (const point of metricPointCloud) {
                 const vx = Math.floor(point.x / voxelSize);
                 const vy = Math.floor(point.y / voxelSize);
                 const vz = Math.floor(point.z / voxelSize);
-                const key = `${vx},${vy},${vz}`;
-                voxels.set(key, true);
+                voxels.add(`${vx},${vy},${vz}`);
             }
             
             return voxels.size * voxelVolume;
         }
         
         function calculateMeshVolume() {
-            // Calculate volume using mesh faces
-            if (meshData.faces.length === 0) {
-                console.warn('No mesh faces available for volume calculation. Try adjusting mesh resolution.');
+            const { vertices, faces } = generateMesh(metricPointCloud);
+            if (faces.length === 0) {
+                console.warn('No mesh faces available for volume calculation.');
                 return 0;
             }
             
             let volume = 0;
-            const vertices = meshData.vertices;
-            
-            // Process faces in chunks to avoid stack overflow on large meshes
-            const chunkSize = 1000;
-            const totalFaces = meshData.faces.length / 3;
-            
-            for (let faceStart = 0; faceStart < meshData.faces.length; faceStart += chunkSize * 3) {
-                const faceEnd = Math.min(faceStart + chunkSize * 3, meshData.faces.length);
+            for (let i = 0; i < faces.length; i += 3) {
+                const v1 = vertices[faces[i]];
+                const v2 = vertices[faces[i+1]];
+                const v3 = vertices[faces[i+2]];
                 
-                // Sum volumes of tetrahedra formed by each triangle and origin
-                for (let i = faceStart; i < faceEnd; i += 3) {
-                    const i1 = meshData.faces[i] * 3;
-                    const i2 = meshData.faces[i + 1] * 3;
-                    const i3 = meshData.faces[i + 2] * 3;
-                    
-                    // Bounds checking
-                    if (i1 + 2 >= vertices.length || i2 + 2 >= vertices.length || i3 + 2 >= vertices.length) {
-                        continue;
-                    }
-                    
-                    const v1 = [vertices[i1], vertices[i1 + 1], vertices[i1 + 2]];
-                    const v2 = [vertices[i2], vertices[i2 + 1], vertices[i2 + 2]];
-                    const v3 = [vertices[i3], vertices[i3 + 1], vertices[i3 + 2]];
-                    
-                    // Calculate tetrahedron volume
-                    const vol = Math.abs(
-                        v1[0] * (v2[1] * v3[2] - v2[2] * v3[1]) +
-                        v2[0] * (v3[1] * v1[2] - v3[2] * v1[1]) +
-                        v3[0] * (v1[1] * v2[2] - v1[2] * v2[1])
-                    ) / 6;
-                    
-                    if (isFinite(vol)) {
-                        volume += vol;
-                    }
-                }
+                volume += v1.dot(v2.clone().cross(v3));
             }
             
-            return Math.abs(volume);
+            return Math.abs(volume / 6.0);
         }
-        
-        function updateVolumeDisplay(volume) {
-            const result = document.getElementById('volumeResult');
-            result.innerHTML = `Volume: ${volume.toFixed(6)} m³<br><small>${(volume * 1000).toFixed(3)} L</small>`;
+
+        function calculateConvexHullVolume() {
+            const box = new THREE.Box3().setFromPoints(metricPointCloud);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            return size.x * size.y * size.z * 0.5; 
         }
-        
-        function updateAlgorithmInfo() {
-            const info = document.getElementById('algorithmDescription');
-            const descriptions = {
-                convex: 'Convex Hull: Calculates the volume of the smallest convex shape that contains all points. Tends to overestimate volume for complex objects.',
-                voxel: 'Voxel Method: Divides space into small cubes (voxels) and counts occupied voxels. More accurate with smaller voxel sizes but computationally intensive.',
-                mesh: 'Mesh Volume: Uses triangular mesh to approximate surface and calculates volume using tetrahedra. Most accurate for smooth surfaces.'
-            };
-            
-            info.textContent = descriptions[currentMethod];
+
+        function createVisualizationData() {
+            vizPointCloud = [];
+            if (metricPointCloud.length === 0) return;
+
+            const box = new THREE.Box3().setFromPoints(metricPointCloud);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim === 0) return;
+
+            for (const p of metricPointCloud) {
+                vizPointCloud.push(
+                    p.clone().sub(center).divideScalar(maxDim)
+                );
+            }
         }
         
         function updateVisualization() {
-            // Clear existing objects
-            if (pointCloud) scene.remove(pointCloud);
-            if (meshSurface) scene.remove(meshSurface);
-            if (wireframeMesh) scene.remove(wireframeMesh);
-            if (crossSectionPlane) scene.remove(crossSectionPlane);
-            
-            // Point cloud
+            if (scene) {
+                if (pointCloud) scene.remove(pointCloud);
+                if (meshSurface) scene.remove(meshSurface);
+            }
+
+            if (vizPointCloud.length === 0) return;
+
             if (document.getElementById('showPointCloud').checked) {
                 createPointCloudVisualization();
             }
             
-            // Mesh surface
             if (document.getElementById('showMesh').checked) {
                 createMeshVisualization();
             }
-            
-            // Wireframe
-            if (document.getElementById('showWireframe').checked) {
-                createWireframeVisualization();
-            }
-            
-            // Cross section
-            if (document.getElementById('showCrossSection').checked) {
-                createCrossSectionVisualization();
-            }
         }
-        
+
         function createPointCloudVisualization() {
-            // Limit point cloud size for performance
-            const maxPoints = 50000;
-            const pointsToRender = pointCloudData.length > maxPoints ? 
-                pointCloudData.filter((_, i) => i % Math.ceil(pointCloudData.length / maxPoints) === 0) : 
-                pointCloudData;
-            
-            if (pointsToRender.length !== pointCloudData.length) {
-                console.log(`Point cloud decimated: showing ${pointsToRender.length} of ${pointCloudData.length} points for performance`);
-            }
-            
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(pointsToRender.length * 3);
-            const colors = new Float32Array(pointsToRender.length * 3);
-            
-            for (let i = 0; i < pointsToRender.length; i++) {
-                const point = pointsToRender[i];
-                positions[i * 3] = point.x;
-                positions[i * 3 + 1] = point.y;
-                positions[i * 3 + 2] = point.z;
-                
-                // Color by depth
-                const t = (point.originalDepth - stats.minDepth) / (stats.maxDepth - stats.minDepth);
-                colors[i * 3] = 1 - t; // Red component
-                colors[i * 3 + 1] = t; // Green component
-                colors[i * 3 + 2] = 0.5; // Blue component
-            }
-            
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            
+            const geometry = new THREE.BufferGeometry().setFromPoints(vizPointCloud);
             const material = new THREE.PointsMaterial({
-                size: parseFloat(document.getElementById('pointSize').value) * 0.01,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.8
+                size: parseFloat(document.getElementById('pointSize').value),
+                sizeAttenuation: false,
+                color: 0x4facfe
             });
-            
             pointCloud = new THREE.Points(geometry, material);
             scene.add(pointCloud);
         }
         
         function createMeshVisualization() {
-            if (meshData.vertices.length === 0) return;
-            
+            const { vertices, faces } = generateMesh(vizPointCloud);
+            if (faces.length === 0) return;
+
             const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(meshData.vertices, 3));
-            
-            if (meshData.faces.length > 0) {
-                geometry.setIndex(meshData.faces);
-            }
-            
+            geometry.setFromPoints(vertices);
+            geometry.setIndex(faces);
             geometry.computeVertexNormals();
-            
+
             const material = new THREE.MeshLambertMaterial({
-                color: 0x4facfe,
+                color: 0x00f2fe,
+                side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.7,
-                side: THREE.DoubleSide
+                opacity: 0.8
             });
-            
+
             meshSurface = new THREE.Mesh(geometry, material);
             scene.add(meshSurface);
         }
-        
-        function createWireframeVisualization() {
-            if (meshData.vertices.length === 0) return;
-            
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(meshData.vertices, 3));
-            
-            if (meshData.faces.length > 0) {
-                geometry.setIndex(meshData.faces);
+
+        function generateMesh(points) {
+            const resolution = parseInt(document.getElementById('meshResolution').value);
+            let vertices = [], faces = [];
+            if (points.length === 0) return { vertices, faces };
+
+            const grid = {};
+            const box = new THREE.Box3().setFromPoints(points);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+
+            if (size.x === 0 || size.y === 0) return { vertices, faces };
+
+            // *** FIX: Base grid density on full sensor resolution for consistency.
+            const gridDivisionsX = stats.imageWidth / resolution;
+            const gridDivisionsY = stats.imageHeight / resolution;
+
+            for(let i = 0; i < points.length; i++) {
+                const p = points[i];
+                // Map a point's position within its bounding box to the grid
+                const gx = Math.floor(((p.x - box.min.x) / size.x) * gridDivisionsX);
+                const gy = Math.floor(((p.y - box.min.y) / size.y) * gridDivisionsY);
+                const key = `${gx},${gy}`;
+                
+                if (!grid[key] || grid[key].point.z > p.z) {
+                    grid[key] = { point: p, index: i };
+                }
             }
-            
-            const material = new THREE.MeshBasicMaterial({
-                color: 0x00f2fe,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.5
+
+            const gridPoints = Object.values(grid);
+            const vertexMap = new Map();
+
+            gridPoints.forEach((gp, i) => {
+                vertices.push(gp.point);
+                const gx = Math.floor(((gp.point.x - box.min.x) / size.x) * gridDivisionsX);
+                const gy = Math.floor(((gp.point.y - box.min.y) / size.y) * gridDivisionsY);
+                vertexMap.set(`${gx},${gy}`, i);
             });
-            
-            wireframeMesh = new THREE.Mesh(geometry, material);
-            scene.add(wireframeMesh);
-        }
-        
-        function createCrossSectionVisualization() {
-            const geometry = new THREE.PlaneGeometry(4, 4);
-            const material = new THREE.MeshBasicMaterial({
-                color: 0xff6b6b,
-                transparent: true,
-                opacity: 0.3,
-                side: THREE.DoubleSide
-            });
-            
-            crossSectionPlane = new THREE.Mesh(geometry, material);
-            
-            const plane = document.getElementById('crossPlane').value;
-            const position = parseFloat(document.getElementById('crossPosition').value) * 0.01;
-            
-            switch (plane) {
-                case 'xy':
-                    crossSectionPlane.position.set(0, 0, position);
-                    break;
-                case 'xz':
-                    crossSectionPlane.rotation.x = Math.PI / 2;
-                    crossSectionPlane.position.set(0, position, 0);
-                    break;
-                case 'yz':
-                    crossSectionPlane.rotation.y = Math.PI / 2;
-                    crossSectionPlane.position.set(position, 0, 0);
-                    break;
+
+            for (const key of vertexMap.keys()) {
+                const [gx, gy] = key.split(',').map(Number);
+                const current = vertexMap.get(`${gx},${gy}`);
+                const right = vertexMap.get(`${gx + 1},${gy}`);
+                const down = vertexMap.get(`${gx},${gy + 1}`);
+                const diag = vertexMap.get(`${gx + 1},${gy + 1}`);
+
+                if (current !== undefined && right !== undefined && down !== undefined) {
+                    faces.push(current, down, right);
+                }
+                if (right !== undefined && down !== undefined && diag !== undefined) {
+                    faces.push(right, down, diag);
+                }
             }
-            
-            scene.add(crossSectionPlane);
+
+            return { vertices, faces };
         }
+
+        function showLoading(show, text = 'Processing...') {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+        }
+
+        function showUI() {
+            document.getElementById('statsSection').style.display = 'block';
+            document.getElementById('vizSection').style.display = 'block';
+            document.getElementById('volumeSection').style.display = 'block';
+            document.getElementById('isolationSection').style.display = 'block';
+            document.getElementById('advancedSection').style.display = 'block';
+        }
+
+        function updateStatsDisplay() {
+            const grid = document.getElementById('statsGrid');
+            grid.innerHTML = `
+                <div class="stat-item"><div class="stat-value">${stats.pointCount.toLocaleString()}</div><div class="stat-label">Raw Points</div></div>
+                <div class="stat-item"><div class="stat-value">${stats.imageWidth}×${stats.imageHeight}</div><div class="stat-label">Sensor Resolution</div></div>
+                <div class="stat-item"><div class="stat-value">${stats.minDepth.toFixed(3)}m</div><div class="stat-label">Min Depth</div></div>
+                <div class="stat-item"><div class="stat-value">${stats.maxDepth.toFixed(3)}m</div><div class="stat-label">Max Depth</div></div>
+            `;
+            document.getElementById('minDepthFilter').max = stats.maxDepth.toFixed(2);
+            document.getElementById('maxDepthFilter').max = stats.maxDepth.toFixed(2);
+        }
+
+        function updateVolumeDisplay(volumeM3) {
+            const volumeCm3 = volumeM3 * 1_000_000;
+            const result = document.getElementById('volumeResult');
+            result.innerHTML = `Volume: ${volumeCm3.toLocaleString(undefined, {maximumFractionDigits: 2})} cm³`;
+        }
+
+        function updateAlgorithmInfo() {
+            const info = document.getElementById('algorithmDescription');
+            const descriptions = {
+                convex: 'Convex Hull: Volume of the smallest convex shape containing the object. Fast but inaccurate for concave shapes. Approximated from bounding box.',
+                voxel: 'Voxel Method: Fills the object with tiny cubes (voxels) and sums their volume. Reliable and accurate, especially for complex or non-watertight shapes.',
+                mesh: 'Mesh Volume: Calculates volume from a triangular surface mesh. Can be very accurate if the mesh is "watertight", but may fail on sparse data.'
+            };
+            info.textContent = descriptions[currentMethod];
+        }
+
+        function setupBasicControls() {
+            let isMouseDown = false;
+            let prevMouseX = 0, prevMouseY = 0;
+            const canvas = renderer.domElement;
+
+            canvas.addEventListener('mousedown', e => { isMouseDown = true; prevMouseX = e.clientX; prevMouseY = e.clientY; });
+            canvas.addEventListener('mouseup', () => isMouseDown = false);
+            canvas.addEventListener('mouseout', () => isMouseDown = false);
+            
+            canvas.addEventListener('mousemove', e => {
+                if (!isMouseDown) return;
+                const deltaX = e.clientX - prevMouseX;
+                const deltaY = e.clientY - prevMouseY;
+                scene.rotation.y += deltaX * 0.005;
+                scene.rotation.x += deltaY * 0.005;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+
+            canvas.addEventListener('wheel', e => {
+                camera.position.z *= (e.deltaY > 0 ? 1.1 : 0.9);
+            }, { passive: true });
+        }
+
+        function onWindowResize() {
+            const container = document.querySelector('.main-view');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('csvFile').addEventListener('change', handleFileUpload);
+
+        const recalcControls = ['minDepthFilter', 'maxDepthFilter', 'meshResolution', 'voxelSize', 'cameraFov'];
+        recalcControls.forEach(id => {
+            document.getElementById(id).addEventListener('change', () => {
+                 if(rawDepthData.length > 0) processAndCalculate();
+            });
+        });
+
+        document.getElementById('minDepthFilter').addEventListener('input', e => {
+            const min = parseFloat(e.target.value);
+            const max = parseFloat(document.getElementById('maxDepthFilter').value);
+            document.getElementById('depthFilterValue').textContent = `${min.toFixed(2)}-${max.toFixed(2)}`;
+        });
+        document.getElementById('maxDepthFilter').addEventListener('input', e => {
+            const min = parseFloat(document.getElementById('minDepthFilter').value);
+            const max = parseFloat(e.target.value);
+            document.getElementById('depthFilterValue').textContent = `${min.toFixed(2)}-${max.toFixed(2)}`;
+        });
+        document.getElementById('pointSize').addEventListener('input', e => {
+            document.getElementById('pointSizeValue').textContent = e.target.value;
+            if (pointCloud) {
+                pointCloud.material.size = parseFloat(e.target.value);
+            }
+        });
+        document.getElementById('meshResolution').addEventListener('input', e => {
+            document.getElementById('meshResValue').textContent = e.target.value;
+        });
+        document.getElementById('voxelSize').addEventListener('input', e => {
+            document.getElementById('voxelSizeValue').textContent = e.target.value;
+        });
+        document.getElementById('cameraFov').addEventListener('input', e => {
+            document.getElementById('fovValue').textContent = e.target.value;
+        });
         
-        // Event listeners
         document.getElementById('showPointCloud').addEventListener('change', updateVisualization);
         document.getElementById('showMesh').addEventListener('change', updateVisualization);
-        document.getElementById('showWireframe').addEventListener('change', updateVisualization);
-        document.getElementById('showCrossSection').addEventListener('change', () => {
-            if (document.getElementById('showCrossSection').checked) {
-                document.getElementById('crossSectionControls').style.display = 'block';
-            } else {
-                document.getElementById('crossSectionControls').style.display = 'none';
-            }
-            updateVisualization();
-        });
-        
-        document.getElementById('pointSize').addEventListener('input', (e) => {
-            document.getElementById('pointSizeValue').textContent = e.target.value;
-            updateVisualization();
-        });
-        
-        document.getElementById('meshResolution').addEventListener('input', async (e) => {
-            document.getElementById('meshResValue').textContent = e.target.value;
-            if (depthData.length > 0) {
-                await generateMesh();
-                calculateVolume();
-                updateVisualization();
-            }
-        });
-        
-        document.getElementById('voxelSize').addEventListener('input', (e) => {
-            document.getElementById('voxelSizeValue').textContent = e.target.value;
-            if (currentMethod === 'voxel') {
-                calculateVolume();
-            }
-        });
-        
-        document.getElementById('crossPlane').addEventListener('change', (e) => {
-            document.getElementById('crossPlaneValue').textContent = e.target.value.toUpperCase();
-            updateVisualization();
-        });
-        
-        document.getElementById('crossPosition').addEventListener('input', (e) => {
-            document.getElementById('crossPosValue').textContent = e.target.value;
-            updateVisualization();
-        });
-        
-        document.getElementById('minDepthFilter').addEventListener('input', updateDepthFilter);
-        document.getElementById('maxDepthFilter').addEventListener('input', updateDepthFilter);
-        
-        function updateDepthFilter() {
-            const min = parseFloat(document.getElementById('minDepthFilter').value);
-            const max = parseFloat(document.getElementById('maxDepthFilter').value);
-            document.getElementById('depthFilterValue').textContent = `${min}-${max}`;
-            
-            if (depthData.length > 0) {
-                // Re-filter data and recalculate
-                // This would require regenerating the point cloud with filtered data
-                calculateVolume();
-            }
-        }
-        
-        // Method tabs
+
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                const newMethod = e.target.dataset.method;
                 e.target.classList.add('active');
-                currentMethod = e.target.dataset.method;
-                calculateVolume();
+                currentMethod = newMethod;
+                
+                document.getElementById('voxelControl').style.display = newMethod === 'voxel' ? 'block' : 'none';
+
+                if (rawDepthData.length > 0) calculateVolume();
             });
         });
         
-        // Initialize the application
         initThreeJS();
     </script>
 </body>
