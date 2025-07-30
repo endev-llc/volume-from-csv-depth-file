@@ -99,6 +99,22 @@
             font-size: 12px;
         }
         
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
         .checkbox-group {
             display: flex;
             align-items: center;
@@ -110,7 +126,7 @@
             width: 16px;
             height: 16px;
         }
-        
+
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -252,6 +268,16 @@
                 </div>
             </div>
 
+            <div class="section" id="noiseReductionSection" style="display: none;">
+                <h3>🧹 Noise Reduction</h3>
+                <div class="control-group">
+                    <button id="removeNoiseBtn">Remove Stray Points</button>
+                </div>
+                <div class="control-group">
+                    <label>Points After Cleanup: <span class="value-display" id="cleanedPointsCount">0</span></label>
+                </div>
+            </div>
+
             <div class="section" id="advancedSection" style="display: none;">
                 <h3>⚙️ Calibration</h3>
                 <div class="control-group">
@@ -264,8 +290,6 @@
                 <h3>📐 Volume Calculation</h3>
                 <div class="method-tabs">
                     <div class="tab active" data-method="voxel">Voxel</div>
-                    <div class="tab" data-method="mesh">Mesh</div>
-                    <div class="tab" data-method="convex">Convex Hull</div>
                 </div>
                 <div class="volume-result" id="volumeResult">
                     Volume: 0 cm³
@@ -282,24 +306,13 @@
                     <input type="checkbox" id="showPointCloud" checked>
                     <label for="showPointCloud">Point Cloud</label>
                 </div>
-                <div class="checkbox-group">
+                 <div class="checkbox-group">
                     <input type="checkbox" id="showMesh" checked>
                     <label for="showMesh">Mesh Surface</label>
                 </div>
                 <div class="control-group">
                     <label>Point Size: <span class="value-display" id="pointSizeValue">2</span></label>
                     <input type="range" id="pointSize" min="1" max="10" step="1" value="2">
-                </div>
-                <div class="control-group">
-                    <label>Mesh Resolution: <span class="value-display" id="meshResValue">1</span></label>
-                    <input type="range" id="meshResolution" min="1" max="5" step="1" value="1">
-                </div>
-            </div>
-            
-            <div class="section" id="algorithmInfo">
-                <h3>🧮 Algorithm Details</h3>
-                <div id="algorithmDescription" style="font-size: 12px; line-height: 1.4;">
-                    Upload data to see calculation methods. The Voxel method is generally the most reliable for non-watertight objects.
                 </div>
             </div>
         </div>
@@ -318,7 +331,11 @@
         let scene, camera, renderer, controls;
         let pointCloud, meshSurface;
         
-        let rawDepthData = [], filteredDepthData = [], metricPointCloud = [], vizPointCloud = [];
+        let rawDepthData = [];
+        let depthFilteredData = [];
+        let finalPoints = [];
+        let metricPointCloud = [];
+        let vizPointCloud = [];
         
         let stats = {};
         let currentMethod = 'voxel';
@@ -368,7 +385,7 @@
                 updateProgress(40);
                 
                 showUI();
-                await processAndCalculate();
+                await runFullPipeline();
 
             } catch (error) {
                 console.error('Error processing file:', error);
@@ -377,64 +394,27 @@
                 showLoading(false);
             }
         }
+        
+        async function runFullPipeline() {
+            showLoading(true, 'Filtering depth...');
+            await new Promise(r => setTimeout(r, 10));
+            filterByDepth();
+            document.getElementById('filteredPointsCount').textContent = depthFilteredData.length.toLocaleString();
+            
+            finalPoints = [...depthFilteredData];
+            document.getElementById('cleanedPointsCount').textContent = 'N/A';
 
-        async function parseCSVData(text) {
-            return new Promise(resolve => {
-                const lines = text.trim().split('\n');
-                rawDepthData = [];
-                
-                let minDepth = Infinity, maxDepth = -Infinity;
-                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                
-                for (let i = 1; i < lines.length; i++) {
-                    const cols = lines[i].split(',');
-                    if (cols.length >= 3) {
-                        const x = parseInt(cols[0]);
-                        const y = parseInt(cols[1]);
-                        const depth = parseFloat(cols[2]);
-                        
-                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0 && isFinite(depth)) {
-                            rawDepthData.push({ x, y, depth });
-                            minDepth = Math.min(minDepth, depth);
-                            maxDepth = Math.max(maxDepth, depth);
-                            minX = Math.min(minX, x);
-                            maxX = Math.max(maxX, x);
-                            minY = Math.min(minY, y);
-                            maxY = Math.max(maxY, y);
-                        }
-                    }
-                }
-                
-                stats = {
-                    pointCount: rawDepthData.length,
-                    minDepth: minDepth,
-                    maxDepth: maxDepth,
-                    // *** FIX: Calculate the full image dimensions from the max coordinates,
-                    // not the bounding box of the valid points. This is crucial.
-                    imageWidth: maxX + 1,
-                    imageHeight: maxY + 1,
-                };
-                
-                updateStatsDisplay();
-                resolve();
-            });
+            await calculateAndVisualize();
         }
 
-        async function processAndCalculate() {
-            if (rawDepthData.length === 0) return;
-
-            showLoading(true, 'Isolating object...');
-            await new Promise(r => setTimeout(r, 10));
-
-            filterDepthData();
-            document.getElementById('filteredPointsCount').textContent = filteredDepthData.length.toLocaleString();
-
-            if (filteredDepthData.length === 0) {
+        async function calculateAndVisualize() {
+            if (finalPoints.length === 0) {
                 showLoading(false);
-                alert("No data points remain after filtering. Adjust the depth range.");
+                updateVisualization(); // Clear the screen
+                alert("No data points remain to process.");
                 return;
             }
-
+            
             showLoading(true, 'Creating metric model...');
             await new Promise(r => setTimeout(r, 10));
             createMetricPointCloud();
@@ -451,106 +431,168 @@
             showLoading(false);
         }
 
-        function filterDepthData() {
+        async function parseCSVData(text) {
+            return new Promise(resolve => {
+                const lines = text.trim().split('\n');
+                rawDepthData = [];
+                let minDepth = Infinity, maxDepth = -Infinity;
+                let maxX = -Infinity, maxY = -Infinity;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(',');
+                    if (cols.length >= 3) {
+                        const x = parseInt(cols[0]);
+                        const y = parseInt(cols[1]);
+                        const depth = parseFloat(cols[2]);
+                        
+                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0 && isFinite(depth)) {
+                            rawDepthData.push({ x, y, depth, index: rawDepthData.length });
+                            minDepth = Math.min(minDepth, depth);
+                            maxDepth = Math.max(maxDepth, depth);
+                            maxX = Math.max(maxX, x);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+                
+                stats = {
+                    pointCount: rawDepthData.length,
+                    minDepth: minDepth,
+                    maxDepth: maxDepth,
+                    imageWidth: maxX + 1,
+                    imageHeight: maxY + 1,
+                };
+                
+                updateStatsDisplay();
+                resolve();
+            });
+        }
+
+        function filterByDepth() {
             const minDepth = parseFloat(document.getElementById('minDepthFilter').value);
             const maxDepth = parseFloat(document.getElementById('maxDepthFilter').value);
-            
-            filteredDepthData = rawDepthData.filter(p => p.depth >= minDepth && p.depth <= maxDepth);
+            depthFilteredData = rawDepthData.filter(p => p.depth >= minDepth && p.depth <= maxDepth);
         }
+
+        // --- OPTIMIZED: Noise Reduction Logic ---
+        async function handleRemoveNoise() {
+            if (depthFilteredData.length === 0) {
+                alert("No points to process. Adjust depth filter first.");
+                return;
+            }
+            showLoading(true, 'Finding largest cluster...');
+            await new Promise(r => setTimeout(r, 10));
+
+            const neighborRadius = 5; // in pixels
+            const cellSize = neighborRadius * 2;
+            const grid = new Map();
+
+            // 1. Place points into a spatial grid
+            for (const point of depthFilteredData) {
+                const gridX = Math.floor(point.x / cellSize);
+                const gridY = Math.floor(point.y / cellSize);
+                const key = `${gridX},${gridY}`;
+                if (!grid.has(key)) {
+                    grid.set(key, []);
+                }
+                grid.get(key).push(point);
+            }
+
+            const clusters = [];
+            const visited = new Set();
+
+            // 2. Iterate through points to find clusters
+            for (const point of depthFilteredData) {
+                if (visited.has(point.index)) continue;
+
+                const newCluster = [];
+                const queue = [point];
+                visited.add(point.index);
+
+                while (queue.length > 0) {
+                    const currentPoint = queue.shift();
+                    newCluster.push(currentPoint);
+
+                    const gridX = Math.floor(currentPoint.x / cellSize);
+                    const gridY = Math.floor(currentPoint.y / cellSize);
+
+                    // 3. Search only neighboring cells (9 total)
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            const key = `${gridX + dx},${gridY + dy}`;
+                            if (grid.has(key)) {
+                                for (const neighbor of grid.get(key)) {
+                                    if (visited.has(neighbor.index)) continue;
+
+                                    const distSq = Math.pow(currentPoint.x - neighbor.x, 2) + Math.pow(currentPoint.y - neighbor.y, 2);
+                                    if (distSq < Math.pow(neighborRadius, 2)) {
+                                        visited.add(neighbor.index);
+                                        queue.push(neighbor);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                clusters.push(newCluster);
+            }
+
+            if (clusters.length > 0) {
+                clusters.sort((a, b) => b.length - a.length);
+                finalPoints = clusters[0];
+            } else {
+                finalPoints = [];
+            }
+            
+            document.getElementById('cleanedPointsCount').textContent = finalPoints.length.toLocaleString();
+            await calculateAndVisualize();
+        }
+
 
         function createMetricPointCloud() {
             metricPointCloud = [];
-            if (filteredDepthData.length === 0) return;
-
-            // *** FIX: Use the correct full imageWidth and imageHeight from stats.
+            if (finalPoints.length === 0) return;
             const imageWidth = stats.imageWidth;
             const imageHeight = stats.imageHeight;
-
             const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
             const focalLength = (imageWidth / 2) / Math.tan(fov / 2);
-
-            for (const p of filteredDepthData) {
+            for (const p of finalPoints) {
                 const z = p.depth;
-                // The projection now uses the correct principal point (imageWidth/2)
-                // relative to the absolute pixel coordinates (p.x).
                 const x = (p.x - imageWidth / 2) * z / focalLength;
                 const y = -(p.y - imageHeight / 2) * z / focalLength;
-
                 metricPointCloud.push(new THREE.Vector3(x, y, z));
             }
         }
 
         function calculateVolume() {
             let volumeM3 = 0;
-
             if (metricPointCloud.length < 4) {
                 updateVolumeDisplay(0);
                 return;
             }
-
-            switch (currentMethod) {
-                case 'voxel':
-                    volumeM3 = calculateVoxelVolume();
-                    break;
-                case 'mesh':
-                    volumeM3 = calculateMeshVolume();
-                    break;
-                case 'convex':
-                    volumeM3 = calculateConvexHullVolume();
-                    break;
+            if (currentMethod === 'voxel') {
+                volumeM3 = calculateVoxelVolume();
             }
-            
             updateVolumeDisplay(volumeM3);
-            updateAlgorithmInfo();
         }
 
         function calculateVoxelVolume() {
             const voxelSize = parseFloat(document.getElementById('voxelSize').value);
             if (voxelSize <= 0) return 0;
-
             const voxelVolume = Math.pow(voxelSize, 3);
             const voxels = new Set();
-
             for (const point of metricPointCloud) {
                 const vx = Math.floor(point.x / voxelSize);
                 const vy = Math.floor(point.y / voxelSize);
                 const vz = Math.floor(point.z / voxelSize);
                 voxels.add(`${vx},${vy},${vz}`);
             }
-            
             return voxels.size * voxelVolume;
-        }
-        
-        function calculateMeshVolume() {
-            const { vertices, faces } = generateMesh(metricPointCloud);
-            if (faces.length === 0) {
-                console.warn('No mesh faces available for volume calculation.');
-                return 0;
-            }
-            
-            let volume = 0;
-            for (let i = 0; i < faces.length; i += 3) {
-                const v1 = vertices[faces[i]];
-                const v2 = vertices[faces[i+1]];
-                const v3 = vertices[faces[i+2]];
-                
-                volume += v1.dot(v2.clone().cross(v3));
-            }
-            
-            return Math.abs(volume / 6.0);
-        }
-
-        function calculateConvexHullVolume() {
-            const box = new THREE.Box3().setFromPoints(metricPointCloud);
-            const size = new THREE.Vector3();
-            box.getSize(size);
-            return size.x * size.y * size.z * 0.5; 
         }
 
         function createVisualizationData() {
             vizPointCloud = [];
             if (metricPointCloud.length === 0) return;
-
             const box = new THREE.Box3().setFromPoints(metricPointCloud);
             const center = new THREE.Vector3();
             box.getCenter(center);
@@ -558,11 +600,8 @@
             box.getSize(size);
             const maxDim = Math.max(size.x, size.y, size.z);
             if (maxDim === 0) return;
-
             for (const p of metricPointCloud) {
-                vizPointCloud.push(
-                    p.clone().sub(center).divideScalar(maxDim)
-                );
+                vizPointCloud.push(p.clone().sub(center).divideScalar(maxDim));
             }
         }
         
@@ -571,16 +610,12 @@
                 if (pointCloud) scene.remove(pointCloud);
                 if (meshSurface) scene.remove(meshSurface);
             }
-
-            if (vizPointCloud.length === 0) return;
-
-            if (document.getElementById('showPointCloud').checked) {
-                createPointCloudVisualization();
-            }
-            
-            if (document.getElementById('showMesh').checked) {
-                createMeshVisualization();
-            }
+            if (vizPointCloud.length === 0) {
+                renderer.render(scene, camera);
+                return;
+            };
+            if (document.getElementById('showPointCloud').checked) createPointCloudVisualization();
+            if (document.getElementById('showMesh').checked) createMeshVisualization();
         }
 
         function createPointCloudVisualization() {
@@ -595,79 +630,17 @@
         }
         
         function createMeshVisualization() {
-            const { vertices, faces } = generateMesh(vizPointCloud);
-            if (faces.length === 0) return;
-
-            const geometry = new THREE.BufferGeometry();
-            geometry.setFromPoints(vertices);
-            geometry.setIndex(faces);
-            geometry.computeVertexNormals();
-
+            const geometry = new THREE.BufferGeometry().setFromPoints(vizPointCloud);
             const material = new THREE.MeshLambertMaterial({
                 color: 0x00f2fe,
                 side: THREE.DoubleSide,
                 transparent: true,
                 opacity: 0.8
             });
-
             meshSurface = new THREE.Mesh(geometry, material);
+            // Note: Simple mesh from points is not ideal. This is for basic visualization.
+            // A proper mesh generation (like Delaunay triangulation) is complex.
             scene.add(meshSurface);
-        }
-
-        function generateMesh(points) {
-            const resolution = parseInt(document.getElementById('meshResolution').value);
-            let vertices = [], faces = [];
-            if (points.length === 0) return { vertices, faces };
-
-            const grid = {};
-            const box = new THREE.Box3().setFromPoints(points);
-            const size = new THREE.Vector3();
-            box.getSize(size);
-
-            if (size.x === 0 || size.y === 0) return { vertices, faces };
-
-            // *** FIX: Base grid density on full sensor resolution for consistency.
-            const gridDivisionsX = stats.imageWidth / resolution;
-            const gridDivisionsY = stats.imageHeight / resolution;
-
-            for(let i = 0; i < points.length; i++) {
-                const p = points[i];
-                // Map a point's position within its bounding box to the grid
-                const gx = Math.floor(((p.x - box.min.x) / size.x) * gridDivisionsX);
-                const gy = Math.floor(((p.y - box.min.y) / size.y) * gridDivisionsY);
-                const key = `${gx},${gy}`;
-                
-                if (!grid[key] || grid[key].point.z > p.z) {
-                    grid[key] = { point: p, index: i };
-                }
-            }
-
-            const gridPoints = Object.values(grid);
-            const vertexMap = new Map();
-
-            gridPoints.forEach((gp, i) => {
-                vertices.push(gp.point);
-                const gx = Math.floor(((gp.point.x - box.min.x) / size.x) * gridDivisionsX);
-                const gy = Math.floor(((gp.point.y - box.min.y) / size.y) * gridDivisionsY);
-                vertexMap.set(`${gx},${gy}`, i);
-            });
-
-            for (const key of vertexMap.keys()) {
-                const [gx, gy] = key.split(',').map(Number);
-                const current = vertexMap.get(`${gx},${gy}`);
-                const right = vertexMap.get(`${gx + 1},${gy}`);
-                const down = vertexMap.get(`${gx},${gy + 1}`);
-                const diag = vertexMap.get(`${gx + 1},${gy + 1}`);
-
-                if (current !== undefined && right !== undefined && down !== undefined) {
-                    faces.push(current, down, right);
-                }
-                if (right !== undefined && down !== undefined && diag !== undefined) {
-                    faces.push(right, down, diag);
-                }
-            }
-
-            return { vertices, faces };
         }
 
         function showLoading(show, text = 'Processing...') {
@@ -685,6 +658,7 @@
             document.getElementById('volumeSection').style.display = 'block';
             document.getElementById('isolationSection').style.display = 'block';
             document.getElementById('advancedSection').style.display = 'block';
+            document.getElementById('noiseReductionSection').style.display = 'block';
         }
 
         function updateStatsDisplay() {
@@ -705,25 +679,13 @@
             result.innerHTML = `Volume: ${volumeCm3.toLocaleString(undefined, {maximumFractionDigits: 2})} cm³`;
         }
 
-        function updateAlgorithmInfo() {
-            const info = document.getElementById('algorithmDescription');
-            const descriptions = {
-                convex: 'Convex Hull: Volume of the smallest convex shape containing the object. Fast but inaccurate for concave shapes. Approximated from bounding box.',
-                voxel: 'Voxel Method: Fills the object with tiny cubes (voxels) and sums their volume. Reliable and accurate, especially for complex or non-watertight shapes.',
-                mesh: 'Mesh Volume: Calculates volume from a triangular surface mesh. Can be very accurate if the mesh is "watertight", but may fail on sparse data.'
-            };
-            info.textContent = descriptions[currentMethod];
-        }
-
         function setupBasicControls() {
             let isMouseDown = false;
             let prevMouseX = 0, prevMouseY = 0;
             const canvas = renderer.domElement;
-
             canvas.addEventListener('mousedown', e => { isMouseDown = true; prevMouseX = e.clientX; prevMouseY = e.clientY; });
             canvas.addEventListener('mouseup', () => isMouseDown = false);
             canvas.addEventListener('mouseout', () => isMouseDown = false);
-            
             canvas.addEventListener('mousemove', e => {
                 if (!isMouseDown) return;
                 const deltaX = e.clientX - prevMouseX;
@@ -733,10 +695,7 @@
                 prevMouseX = e.clientX;
                 prevMouseY = e.clientY;
             });
-
-            canvas.addEventListener('wheel', e => {
-                camera.position.z *= (e.deltaY > 0 ? 1.1 : 0.9);
-            }, { passive: true });
+            canvas.addEventListener('wheel', e => { camera.position.z *= (e.deltaY > 0 ? 1.1 : 0.9); }, { passive: true });
         }
 
         function onWindowResize() {
@@ -753,11 +712,13 @@
 
         // --- Event Listeners ---
         document.getElementById('csvFile').addEventListener('change', handleFileUpload);
+        
+        document.getElementById('removeNoiseBtn').addEventListener('click', handleRemoveNoise);
 
-        const recalcControls = ['minDepthFilter', 'maxDepthFilter', 'meshResolution', 'voxelSize', 'cameraFov'];
+        const recalcControls = ['minDepthFilter', 'maxDepthFilter', 'voxelSize', 'cameraFov'];
         recalcControls.forEach(id => {
             document.getElementById(id).addEventListener('change', () => {
-                 if(rawDepthData.length > 0) processAndCalculate();
+                 if(rawDepthData.length > 0) runFullPipeline();
             });
         });
 
@@ -773,12 +734,7 @@
         });
         document.getElementById('pointSize').addEventListener('input', e => {
             document.getElementById('pointSizeValue').textContent = e.target.value;
-            if (pointCloud) {
-                pointCloud.material.size = parseFloat(e.target.value);
-            }
-        });
-        document.getElementById('meshResolution').addEventListener('input', e => {
-            document.getElementById('meshResValue').textContent = e.target.value;
+            if (pointCloud) pointCloud.material.size = parseFloat(e.target.value);
         });
         document.getElementById('voxelSize').addEventListener('input', e => {
             document.getElementById('voxelSizeValue').textContent = e.target.value;
@@ -792,14 +748,15 @@
 
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 const newMethod = e.target.dataset.method;
-                e.target.classList.add('active');
-                currentMethod = newMethod;
-                
-                document.getElementById('voxelControl').style.display = newMethod === 'voxel' ? 'block' : 'none';
-
-                if (rawDepthData.length > 0) calculateVolume();
+                if(newMethod === 'voxel') {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentMethod = newMethod;
+                    if (rawDepthData.length > 0) calculateVolume();
+                } else {
+                    alert("Only the Voxel method is implemented in this version.");
+                }
             });
         });
         
