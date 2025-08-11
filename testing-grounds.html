@@ -3,275 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Depth Volume Analyzer</title>
+    <title>Cubic Voxel Volume Analyzer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        * {
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            overflow-x: hidden;
+            box-sizing: border-box;
         }
-        
-        .container {
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .app-container {
             display: grid;
-            grid-template-columns: 380px 1fr;
+            grid-template-columns: 350px 1fr;
             height: 100vh;
         }
-        
-        .sidebar {
-            background: rgba(0, 0, 0, 0.3);
+
+        .control-panel {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
             padding: 20px;
             overflow-y: auto;
-            backdrop-filter: blur(10px);
+            z-index: 100;
         }
-        
-        .main-view {
+
+        .viewer-container {
             position: relative;
             background: #000;
+            overflow: hidden;
         }
-        
-        h1 {
-            font-size: 24px;
-            margin: 0 0 20px 0;
-            background: linear-gradient(45deg, #4facfe, #00f2fe);
+
+        .app-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 25px;
+            background: linear-gradient(45deg, #00d4ff, #ff6b6b);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-align: center;
         }
-        
+
         .section {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
-        
-        .section h3 {
-            margin: 0 0 15px 0;
+
+        .section:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        .section-title {
             font-size: 16px;
-            color: #4facfe;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #00d4ff;
         }
-        
-        .file-input {
-            width: 100%;
-            padding: 10px;
-            border: 2px dashed #4facfe;
-            border-radius: 8px;
-            background: rgba(79, 172, 254, 0.1);
-            color: white;
+
+        .upload-area {
+            border: 2px dashed #00d4ff;
+            border-radius: 10px;
+            padding: 25px;
             text-align: center;
             cursor: pointer;
-            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            background: rgba(0, 212, 255, 0.05);
         }
-        
-        .file-input:hover {
-            background: rgba(79, 172, 254, 0.2);
+
+        .upload-area:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #ff6b6b;
         }
-        
+
+        .upload-area.dragover {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: #ff6b6b;
+        }
+
         input[type="file"] {
             display: none;
         }
-        
+
         .control-group {
             margin-bottom: 15px;
         }
-        
-        label {
+
+        .control-label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-size: 14px;
             color: #ccc;
         }
-        
+
+        .value-display {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00d4ff;
+        }
+
         input[type="range"] {
             width: 100%;
-            margin-bottom: 5px;
+            margin: 8px 0;
+            accent-color: #00d4ff;
         }
-        
-        .value-display {
-            font-family: monospace;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        
-        button {
+
+        .btn {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 8px;
-            background: linear-gradient(45deg, #4facfe, #00f2fe);
-            color: black;
-            font-weight: bold;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease;
-            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            font-size: 14px;
         }
 
-        button:hover {
-            transform: scale(1.02);
-        }
-
-        button.secondary {
-            background: rgba(255, 255, 255, 0.2);
+        .btn-primary {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
             color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: 10px;
+            margin-bottom: 12px;
         }
-        
+
         input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
+            accent-color: #00d4ff;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 15px;
         }
-        
-        .stat-item {
+
+        .stat-card {
             background: rgba(0, 0, 0, 0.3);
-            padding: 8px;
-            border-radius: 6px;
+            padding: 10px;
+            border-radius: 8px;
             text-align: center;
         }
-        
+
         .stat-value {
             font-size: 18px;
             font-weight: bold;
-            color: #4facfe;
+            color: #00d4ff;
         }
-        
+
         .stat-label {
             font-size: 11px;
             color: #aaa;
+            margin-top: 4px;
         }
-        
-        .method-tabs {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-        
-        .tab {
-            flex: 1;
-            padding: 8px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s ease;
-        }
-        
-        .tab.active {
-            background: #4facfe;
+
+        .volume-display {
+            background: linear-gradient(45deg, #00d4ff, #ff6b6b);
             color: black;
-        }
-        
-        .volume-result {
-            background: linear-gradient(45deg, #4facfe, #00f2fe);
-            color: black;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 20px;
+            border-radius: 12px;
             text-align: center;
+            font-size: 24px;
             font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
         }
-        
-        .voxel-stats {
-            background: rgba(79, 172, 254, 0.1);
-            border: 1px solid rgba(79, 172, 254, 0.3);
-            border-radius: 8px;
-            padding: 12px;
+
+        .voxel-info {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
             margin-bottom: 15px;
-            font-size: 12px;
         }
-        
-        .voxel-stats-grid {
+
+        .voxel-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 8px;
+            gap: 10px;
+            margin-top: 10px;
         }
-        
-        .voxel-stat-item {
+
+        .voxel-stat {
             text-align: center;
         }
-        
+
         .voxel-stat-value {
+            font-size: 16px;
             font-weight: bold;
-            color: #4facfe;
-            font-size: 14px;
+            color: #00d4ff;
         }
-        
+
         .voxel-stat-label {
-            color: #aaa;
             font-size: 10px;
+            color: #bbb;
         }
-        
-        .loading {
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #ff6b6b);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading-overlay {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
+            display: none;
+            justify-content: center;
+            align-items: center;
             z-index: 1000;
         }
-        
+
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(79, 172, 254, 0.3);
-            border-left: 4px solid #4facfe;
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 212, 255, 0.3);
+            border-left: 4px solid #00d4ff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            margin: 0 auto 20px;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        #renderCanvas {
-            display: block;
-        }
 
-        /* Drawing overlay styles */
         .drawing-overlay {
             position: absolute;
             top: 0;
@@ -279,49 +301,42 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: 10;
+            z-index: 50;
         }
 
-        .drawing-overlay.drawing-mode {
+        .drawing-overlay.active {
             pointer-events: all;
             cursor: crosshair;
-        }
-
-        #drawingCanvas {
-            width: 100%;
-            height: 100%;
-            background: transparent;
         }
 
         .drawing-controls {
             position: absolute;
             top: 20px;
             right: 20px;
-            display: flex;
+            display: none;
             flex-direction: column;
             gap: 10px;
-            z-index: 20;
+            z-index: 60;
         }
 
         .draw-btn {
-            padding: 8px 12px;
+            padding: 10px 15px;
             border: none;
-            border-radius: 6px;
-            background: rgba(79, 172, 254, 0.9);
+            border-radius: 8px;
+            background: rgba(0, 212, 255, 0.9);
             color: black;
             font-weight: bold;
             cursor: pointer;
-            font-size: 12px;
-            min-width: 80px;
-        }
-
-        .draw-btn.active {
-            background: #ff4444;
-            color: white;
+            transition: all 0.3s ease;
         }
 
         .draw-btn:hover {
             transform: scale(1.05);
+        }
+
+        .draw-btn.active {
+            background: #ff6b6b;
+            color: white;
         }
 
         .mode-indicator {
@@ -330,341 +345,574 @@
             left: 20px;
             background: rgba(0, 0, 0, 0.8);
             color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 10px 15px;
+            border-radius: 8px;
             font-size: 14px;
-            z-index: 20;
+            z-index: 60;
         }
 
-        .drawing-instructions {
-            background: rgba(255, 193, 7, 0.9);
-            color: black;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            margin-bottom: 10px;
-            display: none;
-        }
-
-        .drawing-instructions.show {
+        #canvas3d {
             display: block;
+            width: 100%;
+            height: 100%;
         }
-        
-        /* Voxel Legend */
-        .voxel-legend {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 6px;
-            padding: 8px;
-            margin-top: 10px;
-            font-size: 11px;
-        }
-        
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-        
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h1>🔬 3D Volume Analyzer</h1>
+    <div class="app-container">
+        <div class="control-panel">
+            <div class="app-title">🧊 Cubic Voxel Analyzer</div>
             
             <div class="section">
-                <h3>📁 Data Input</h3>
-                <div class="file-input" onclick="document.getElementById('csvFile').click()">
-                    <div>📊 Upload Depth CSV</div>
-                    <div style="font-size: 12px; opacity: 0.7;">Click to select file</div>
+                <div class="section-title">📁 Data Import</div>
+                <div class="upload-area" id="uploadArea">
+                    <div style="font-size: 18px; margin-bottom: 10px;">📊</div>
+                    <div>Drop CSV file here or click to browse</div>
+                    <div style="font-size: 12px; color: #aaa; margin-top: 8px;">
+                        Supports files up to 4MB
+                    </div>
                 </div>
-                <input type="file" id="csvFile" accept=".csv" />
+                <input type="file" id="fileInput" accept=".csv">
                 <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
+                    <div class="progress-fill" id="progressBar"></div>
                 </div>
             </div>
-            
-            <div class="section" id="statsSection" style="display: none;">
-                <h3>📊 Raw Data Statistics</h3>
+
+            <div class="section hidden" id="statsSection">
+                <div class="section-title">📊 Dataset Statistics</div>
                 <div class="stats-grid" id="statsGrid"></div>
             </div>
 
-            <div class="section" id="segmentationSection" style="display: none;">
-                <h3>✂️ Manual Object Segmentation</h3>
-                <div class="drawing-instructions" id="drawingInstructions">
-                    🎨 <strong>Drawing Mode Active!</strong><br>
-                    Circle/outline the object you want to analyze, then click "Apply Segmentation"
-                </div>
+            <div class="section hidden" id="isolationSection">
+                <div class="section-title">✏️ Object Isolation</div>
+                <button class="btn btn-primary" id="startDrawBtn">Start Drawing</button>
+                <button class="btn btn-secondary" id="clearDrawBtn">Clear Drawing</button>
+                <button class="btn btn-danger" id="applyIsolationBtn">Apply Isolation</button>
                 <div class="control-group">
-                    <button id="enableDrawingBtn">🖊️ Start Drawing</button>
-                    <button id="clearDrawingBtn" class="secondary">🗑️ Clear Drawing</button>
-                    <button id="applySegmentationBtn" class="secondary">✅ Apply Segmentation</button>
-                </div>
-                <div class="control-group">
-                    <label>Points in Selection: <span class="value-display" id="segmentedPointsCount">0</span></label>
+                    <span class="control-label">Selected Points: <span class="value-display" id="selectedCount">0</span></span>
                 </div>
             </div>
 
-            <div class="section" id="advancedSection" style="display: none;">
-                <h3>⚙️ Calibration</h3>
+            <div class="section hidden" id="voxelSection">
+                <div class="section-title">🧊 Voxel Configuration</div>
                 <div class="control-group">
-                    <label>Camera FOV (Horiz.): <span class="value-display" id="fovValue">62</span>°</label>
-                    <input type="range" id="cameraFov" min="40" max="90" step="1" value="62">
+                    <label class="control-label">
+                        Voxel Size: <span class="value-display" id="voxelSizeValue">0.005</span>m
+                    </label>
+                    <input type="range" id="voxelSize" min="0.001" max="0.02" step="0.001" value="0.005">
                 </div>
+                <div class="control-group">
+                    <label class="control-label">
+                        Camera FOV: <span class="value-display" id="fovValue">75</span>°
+                    </label>
+                    <input type="range" id="cameraFov" min="30" max="90" step="1" value="75">
+                </div>
+                <button class="btn btn-primary" id="generateVoxelsBtn">Generate Voxels</button>
             </div>
-            
-            <div class="section" id="volumeSection" style="display: none;">
-                <h3>📐 Volume Calculation</h3>
-                <div class="method-tabs">
-                    <div class="tab active" data-method="voxel">Voxel</div>
-                </div>
-                <div class="volume-result" id="volumeResult">
+
+            <div class="section hidden" id="volumeSection">
+                <div class="section-title">📏 Volume Analysis</div>
+                <div class="volume-display" id="volumeDisplay">
                     Volume: 0 cm³
                 </div>
-                <div class="control-group" id="voxelControl">
-                    <label>Voxel Size: <span class="value-display" id="voxelSizeValue">0.01</span>m</label>
-                    <input type="range" id="voxelSize" min="0.001" max="0.05" step="0.001" value="0.01">
-                </div>
-                
-                <!-- Voxel Statistics -->
-                <div class="voxel-stats" id="voxelStats" style="display: none;">
-                    <div style="font-weight: bold; margin-bottom: 8px;">📊 Voxel Analysis</div>
-                    <div class="voxel-stats-grid">
-                        <div class="voxel-stat-item">
-                            <div class="voxel-stat-value" id="occupiedVoxels">0</div>
-                            <div class="voxel-stat-label">Solid Filled</div>
+                <div class="voxel-info">
+                    <div style="font-weight: bold; margin-bottom: 10px;">Voxel Analysis</div>
+                    <div class="voxel-grid">
+                        <div class="voxel-stat">
+                            <div class="voxel-stat-value" id="filledVoxels">0</div>
+                            <div class="voxel-stat-label">Filled Voxels</div>
                         </div>
-                        <div class="voxel-stat-item">
+                        <div class="voxel-stat">
                             <div class="voxel-stat-value" id="totalVoxels">0</div>
                             <div class="voxel-stat-label">Total Grid</div>
                         </div>
-                        <div class="voxel-stat-item">
-                            <div class="voxel-stat-value" id="voxelVolume">0</div>
-                            <div class="voxel-stat-label">Per Voxel (cm³)</div>
+                        <div class="voxel-stat">
+                            <div class="voxel-stat-value" id="voxelVolumeStat">0</div>
+                            <div class="voxel-stat-label">Per Voxel (mm³)</div>
                         </div>
-                        <div class="voxel-stat-item">
-                            <div class="voxel-stat-value" id="occupancyRate">0%</div>
-                            <div class="voxel-stat-label">Occupancy</div>
+                        <div class="voxel-stat">
+                            <div class="voxel-stat-value" id="fillRatio">0%</div>
+                            <div class="voxel-stat-label">Fill Ratio</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="section" id="vizSection" style="display: none;">
-                <h3>👁️ Visualization</h3>
+            <div class="section hidden" id="visualSection">
+                <div class="section-title">👁️ Visualization</div>
                 <div class="checkbox-group">
-                    <input type="checkbox" id="showPointCloud" checked>
-                    <label for="showPointCloud">Point Cloud</label>
-                </div>
-                 <div class="checkbox-group">
-                    <input type="checkbox" id="showMesh" checked>
-                    <label for="showMesh">Mesh Surface</label>
+                    <input type="checkbox" id="showPoints" checked>
+                    <label>Point Cloud</label>
                 </div>
                 <div class="checkbox-group">
-                    <input type="checkbox" id="showVoxelGrid">
-                    <label for="showVoxelGrid">Voxel Grid</label>
+                    <input type="checkbox" id="showVoxels" checked>
+                    <label>Cubic Voxels</label>
                 </div>
                 <div class="checkbox-group">
-                    <input type="checkbox" id="showOccupiedVoxels">
-                    <label for="showOccupiedVoxels">Solid Filled Voxels</label>
+                    <input type="checkbox" id="showWireframe">
+                    <label>Voxel Wireframe</label>
                 </div>
                 <div class="control-group">
-                    <label>Point Size: <span class="value-display" id="pointSizeValue">2</span></label>
-                    <input type="range" id="pointSize" min="1" max="10" step="1" value="2">
+                    <label class="control-label">
+                        Point Size: <span class="value-display" id="pointSizeValue">2</span>
+                    </label>
+                    <input type="range" id="pointSize" min="1" max="8" step="1" value="2">
                 </div>
                 <div class="control-group">
-                    <label>Voxel Opacity: <span class="value-display" id="voxelOpacityValue">0.3</span></label>
-                    <input type="range" id="voxelOpacity" min="0.1" max="1.0" step="0.1" value="0.3">
-                </div>
-                
-                <!-- Voxel Legend -->
-                <div class="voxel-legend">
-                    <div style="font-weight: bold; margin-bottom: 6px;">Voxel Legend:</div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background-color: #4facfe;"></div>
-                        <span>Solid Filled Voxels</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background-color: #333; border-color: #666;"></div>
-                        <span>Empty Grid (when visible)</span>
-                    </div>
+                    <label class="control-label">
+                        Voxel Opacity: <span class="value-display" id="voxelOpacityValue">0.7</span>
+                    </label>
+                    <input type="range" id="voxelOpacity" min="0.1" max="1.0" step="0.1" value="0.7">
                 </div>
             </div>
         </div>
-        
-        <div class="main-view">
-            <canvas id="renderCanvas"></canvas>
+
+        <div class="viewer-container">
+            <canvas id="canvas3d"></canvas>
             
-            <!-- Drawing overlay -->
             <div class="drawing-overlay" id="drawingOverlay">
                 <canvas id="drawingCanvas"></canvas>
             </div>
 
-            <!-- Drawing controls -->
-            <div class="drawing-controls" id="drawingControls" style="display: none;">
-                <button class="draw-btn" id="toggleDrawBtn">🖊️ Draw</button>
-                <button class="draw-btn" id="clearBtn">🗑️ Clear</button>
-                <button class="draw-btn" id="doneBtn">✅ Done</button>
+            <div class="drawing-controls" id="drawingControls">
+                <button class="draw-btn" id="finishDrawBtn">Finish</button>
+                <button class="draw-btn" id="cancelDrawBtn">Cancel</button>
             </div>
 
-            <!-- Mode indicator -->
-            <div class="mode-indicator" id="modeIndicator">Navigation Mode</div>
-            
-            <div class="loading" id="loading" style="display: none;">
-                <div class="spinner"></div>
-                <div id="loadingText">Processing...</div>
+            <div class="mode-indicator" id="modeIndicator">3D Navigation Mode</div>
+
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <div id="loadingText">Processing...</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- Global State ---
+        // Global variables
         let scene, camera, renderer, controls;
-        let pointCloud, meshSurface;
-        let voxelGridLines, occupiedVoxelsGroup;
-        
+        let pointCloudMesh = null;
+        let voxelMesh = null;
+        let wireframeMesh = null;
+
+        // Data storage
         let rawDepthData = [];
-        let segmentedData = [];
-        let finalPoints = [];
-        let metricPointCloud = [];
-        let vizPointCloud = [];
-        let voxelData = { occupied: new Set(), bounds: null, voxelSize: 0 };
-        
-        let stats = {};
-        let currentMethod = 'voxel';
+        let isolatedData = [];
+        let pointCloud3D = [];
+        let voxelGrid = new Map();
+        let filledVoxelGrid = new Map();
 
         // Drawing state
         let isDrawingMode = false;
-        let isDrawing = false;
+        let isCurrentlyDrawing = false;
         let drawingPath = [];
-        let drawingContext;
-        let drawingCanvas;
-        let depthImageCanvas; // For visualizing depth data as 2D image
+        let drawingCanvas, drawingContext;
 
-        // --- Initialization ---
-        function initThreeJS() {
-            const canvas = document.getElementById('renderCanvas');
+        // Statistics
+        let dataStats = {};
+        let voxelStats = {};
+
+        // Initialize the application
+        function init() {
+            setupThreeJS();
+            setupDrawingCanvas();
+            setupEventListeners();
+            setupFileUpload();
+        }
+
+        function setupThreeJS() {
+            const canvas = document.getElementById('canvas3d');
             const container = canvas.parentElement;
-            
+
+            // Scene setup
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a0a);
-            
-            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.01, 1000);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(
+                75, 
+                container.clientWidth / container.clientHeight, 
+                0.001, 
+                100
+            );
             camera.position.set(0.5, 0.5, 0.5);
             camera.lookAt(0, 0, 0);
-            
-            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: canvas, 
+                antialias: true,
+                alpha: true 
+            });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambientLight);
+
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(1, 1, 1);
+            directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
             scene.add(directionalLight);
-            
-            setupBasicControls();
-            scene.add(new THREE.AxesHelper(0.5));
+
+            // Controls
+            setupControls();
+
+            // Start render loop
             animate();
-            
+
+            // Handle window resize
             window.addEventListener('resize', onWindowResize);
         }
 
-        function initDrawingCanvas() {
+        function setupDrawingCanvas() {
             drawingCanvas = document.getElementById('drawingCanvas');
             drawingContext = drawingCanvas.getContext('2d');
             
-            const container = document.querySelector('.main-view');
+            const container = document.querySelector('.viewer-container');
             drawingCanvas.width = container.clientWidth;
             drawingCanvas.height = container.clientHeight;
-            
-            setupDrawingEvents();
-        }
 
-        // --- Drawing Functionality ---
-        function setupDrawingEvents() {
-            const overlay = document.getElementById('drawingOverlay');
-            
-            // Mouse events
+            // Drawing events
             drawingCanvas.addEventListener('mousedown', startDrawing);
             drawingCanvas.addEventListener('mousemove', draw);
             drawingCanvas.addEventListener('mouseup', stopDrawing);
-            drawingCanvas.addEventListener('mouseout', stopDrawing);
-            
-            // Touch events for mobile
             drawingCanvas.addEventListener('touchstart', handleTouch);
             drawingCanvas.addEventListener('touchmove', handleTouch);
             drawingCanvas.addEventListener('touchend', stopDrawing);
         }
 
-        function enableDrawingMode() {
-            isDrawingMode = true;
-            document.getElementById('drawingOverlay').classList.add('drawing-mode');
-            document.getElementById('drawingControls').style.display = 'flex';
-            document.getElementById('modeIndicator').textContent = 'Drawing Mode - Click and drag to outline object';
-            document.getElementById('drawingInstructions').classList.add('show');
-            document.getElementById('enableDrawingBtn').textContent = '🚫 Exit Drawing';
+        function setupControls() {
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            const canvas = renderer.domElement;
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (isDrawingMode) return;
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDragging || isDrawingMode) return;
+
+                const deltaMove = {
+                    x: e.clientX - previousMousePosition.x,
+                    y: e.clientY - previousMousePosition.y
+                };
+
+                const rotationSpeed = 0.005;
+                scene.rotation.y += deltaMove.x * rotationSpeed;
+                scene.rotation.x += deltaMove.y * rotationSpeed;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                if (isDrawingMode) return;
+                const zoomSpeed = 0.1;
+                camera.position.multiplyScalar(e.deltaY > 0 ? 1 + zoomSpeed : 1 - zoomSpeed);
+            }, { passive: true });
+        }
+
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        function setupEventListeners() {
+            // Drawing controls
+            document.getElementById('startDrawBtn').addEventListener('click', startDrawingMode);
+            document.getElementById('clearDrawBtn').addEventListener('click', clearDrawing);
+            document.getElementById('applyIsolationBtn').addEventListener('click', applyIsolation);
+
+            // Voxel controls
+            document.getElementById('generateVoxelsBtn').addEventListener('click', generateVoxels);
+
+            // Visualization controls
+            document.getElementById('showPoints').addEventListener('change', updateVisualization);
+            document.getElementById('showVoxels').addEventListener('change', updateVisualization);
+            document.getElementById('showWireframe').addEventListener('change', updateVisualization);
+
+            // Range inputs
+            document.getElementById('voxelSize').addEventListener('input', updateVoxelSizeDisplay);
+            document.getElementById('cameraFov').addEventListener('input', updateFovDisplay);
+            document.getElementById('pointSize').addEventListener('input', updatePointSizeDisplay);
+            document.getElementById('voxelOpacity').addEventListener('input', updateVoxelOpacityDisplay);
+
+            // Drawing overlay controls
+            document.getElementById('finishDrawBtn').addEventListener('click', finishDrawing);
+            document.getElementById('cancelDrawBtn').addEventListener('click', cancelDrawing);
+        }
+
+        // File handling
+        function handleDragOver(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        async function processFile(file) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Please select a CSV file.');
+                return;
+            }
+
+            showLoading(true, 'Reading file...');
+            updateProgress(0);
+
+            try {
+                const text = await file.text();
+                updateProgress(25);
+
+                await parseCSVData(text);
+                updateProgress(50);
+
+                createPointCloud();
+                updateProgress(75);
+
+                updateDataStats();
+                showSections(['statsSection', 'isolationSection', 'voxelSection', 'visualSection']);
+                updateProgress(100);
+
+                setTimeout(() => showLoading(false), 500);
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Error processing file. Please check the format.');
+                showLoading(false);
+            }
+        }
+
+        async function parseCSVData(text) {
+            return new Promise((resolve) => {
+                const lines = text.trim().split('\n');
+                rawDepthData = [];
+                
+                let minDepth = Infinity, maxDepth = -Infinity;
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+
+                // Skip header if present
+                const startLine = lines[0].includes(',') && isNaN(parseFloat(lines[0].split(',')[0])) ? 1 : 0;
+
+                for (let i = startLine; i < lines.length; i++) {
+                    const cols = lines[i].split(',');
+                    if (cols.length >= 3) {
+                        const x = parseFloat(cols[0]);
+                        const y = parseFloat(cols[1]);
+                        const depth = parseFloat(cols[2]);
+
+                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0) {
+                            rawDepthData.push({ x, y, depth });
+                            
+                            minDepth = Math.min(minDepth, depth);
+                            maxDepth = Math.max(maxDepth, depth);
+                            minX = Math.min(minX, x);
+                            maxX = Math.max(maxX, x);
+                            minY = Math.min(minY, y);
+                            maxY = Math.max(maxY, y);
+                        }
+                    }
+                }
+
+                dataStats = {
+                    pointCount: rawDepthData.length,
+                    minDepth, maxDepth,
+                    minX, maxX, minY, maxY,
+                    imageWidth: maxX - minX + 1,
+                    imageHeight: maxY - minY + 1
+                };
+
+                resolve();
+            });
+        }
+
+        function createPointCloud() {
+            // Convert 2D depth data to 3D coordinates (absolute metric coordinates)
+            pointCloud3D = [];
+            const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
+            const focalLength = (dataStats.imageWidth / 2) / Math.tan(fov / 2);
+
+            for (const point of rawDepthData) {
+                const z = point.depth;
+                const x = (point.x - dataStats.imageWidth / 2) * z / focalLength;
+                const y = -(point.y - dataStats.imageHeight / 2) * z / focalLength;
+                pointCloud3D.push(new THREE.Vector3(x, y, z));
+            }
+
+            // Center the point cloud but preserve absolute scale
+            centerPointCloud();
             
-            // Show depth data as 2D visualization for easier drawing
+            // Adjust camera to view the object at appropriate distance
+            adjustCameraForObject();
+            
+            updateVisualization();
+        }
+
+        function centerPointCloud() {
+            if (pointCloud3D.length === 0) return;
+
+            // Calculate center point
+            const bbox = new THREE.Box3().setFromPoints(pointCloud3D);
+            const center = bbox.getCenter(new THREE.Vector3());
+
+            // Only center, don't scale - preserve absolute dimensions
+            for (let i = 0; i < pointCloud3D.length; i++) {
+                pointCloud3D[i].sub(center);
+            }
+        }
+
+        function adjustCameraForObject() {
+            if (pointCloud3D.length === 0) return;
+
+            // Calculate bounding box of centered object
+            const bbox = new THREE.Box3().setFromPoints(pointCloud3D);
+            const size = bbox.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+
+            // Position camera at appropriate distance to view the object
+            // Use a multiplier to ensure the object is nicely framed
+            const distance = maxDim * 2.5;
+            camera.position.set(distance * 0.7, distance * 0.7, distance * 0.7);
+            camera.lookAt(0, 0, 0);
+
+            // Update axes helper size to be proportional to object
+            updateAxesHelper(maxDim * 0.3);
+        }
+
+        function updateAxesHelper(size) {
+            // Remove old axes helper
+            const oldAxes = scene.getObjectByName('axesHelper');
+            if (oldAxes) {
+                scene.remove(oldAxes);
+            }
+
+            // Add new appropriately sized axes helper
+            const axesHelper = new THREE.AxesHelper(size);
+            axesHelper.name = 'axesHelper';
+            scene.add(axesHelper);
+        }
+
+        // Drawing functionality
+        function startDrawingMode() {
+            if (rawDepthData.length === 0) {
+                alert('Please upload a CSV file first.');
+                return;
+            }
+
+            isDrawingMode = true;
+            document.getElementById('drawingOverlay').classList.add('active');
+            document.getElementById('drawingControls').style.display = 'flex';
+            document.getElementById('modeIndicator').textContent = 'Drawing Mode - Outline the object';
+            document.getElementById('startDrawBtn').textContent = 'Exit Drawing';
+            
+            // Show depth visualization for easier drawing
             showDepthVisualization();
         }
 
-        function disableDrawingMode() {
-            isDrawingMode = false;
-            isDrawing = false;
-            document.getElementById('drawingOverlay').classList.remove('drawing-mode');
-            document.getElementById('drawingControls').style.display = 'none';
-            document.getElementById('modeIndicator').textContent = 'Navigation Mode';
-            document.getElementById('drawingInstructions').classList.remove('show');
-            document.getElementById('enableDrawingBtn').textContent = '🖊️ Start Drawing';
+        function showDepthVisualization() {
+            const canvas = drawingCanvas;
+            const ctx = drawingContext;
             
-            // Hide depth visualization
-            hideDepthVisualization();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (rawDepthData.length === 0) return;
+
+            // Calculate scale to fit canvas
+            const scaleX = canvas.width / dataStats.imageWidth;
+            const scaleY = canvas.height / dataStats.imageHeight;
+            const scale = Math.min(scaleX, scaleY);
+            
+            const offsetX = (canvas.width - dataStats.imageWidth * scale) / 2;
+            const offsetY = (canvas.height - dataStats.imageHeight * scale) / 2;
+
+            // Draw depth points
+            ctx.save();
+            for (const point of rawDepthData) {
+                const x = offsetX + point.x * scale;
+                const y = offsetY + point.y * scale;
+                
+                const normalizedDepth = (point.depth - dataStats.minDepth) / (dataStats.maxDepth - dataStats.minDepth);
+                const intensity = Math.floor((1 - normalizedDepth) * 255);
+                
+                ctx.fillStyle = `rgb(${intensity}, ${Math.floor(intensity * 0.7)}, ${Math.floor(intensity * 0.5)})`;
+                ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(scale), Math.ceil(scale));
+            }
+            ctx.restore();
         }
 
         function startDrawing(e) {
             if (!isDrawingMode) return;
-            isDrawing = true;
+            
+            isCurrentlyDrawing = true;
             drawingPath = [];
             
             const rect = drawingCanvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            drawingPath.push({x, y});
+            drawingPath.push({ x, y });
             
             drawingContext.beginPath();
             drawingContext.moveTo(x, y);
-            drawingContext.strokeStyle = '#ff4444';
+            drawingContext.strokeStyle = '#ff6b6b';
             drawingContext.lineWidth = 3;
             drawingContext.lineCap = 'round';
         }
 
         function draw(e) {
-            if (!isDrawing || !isDrawingMode) return;
+            if (!isDrawingMode || !isCurrentlyDrawing) return;
             
             const rect = drawingCanvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            drawingPath.push({x, y});
+            drawingPath.push({ x, y });
             
             drawingContext.lineTo(x, y);
             drawingContext.stroke();
         }
 
         function stopDrawing() {
-            if (!isDrawing) return;
-            isDrawing = false;
+            if (!isCurrentlyDrawing) return;
             
-            // Close the path if we have enough points
+            isCurrentlyDrawing = false;
+            
             if (drawingPath.length > 2) {
                 drawingContext.closePath();
                 drawingContext.stroke();
@@ -674,78 +922,106 @@
         function handleTouch(e) {
             e.preventDefault();
             const touch = e.touches[0];
-            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
-                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
+            const mouseEvent = new MouseEvent(
+                e.type === 'touchstart' ? 'mousedown' : 
+                e.type === 'touchmove' ? 'mousemove' : 'mouseup', 
+                {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                }
+            );
             drawingCanvas.dispatchEvent(mouseEvent);
         }
 
         function clearDrawing() {
             drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
             drawingPath = [];
-            document.getElementById('segmentedPointsCount').textContent = '0';
+            isCurrentlyDrawing = false;
+            document.getElementById('selectedCount').textContent = '0';
             
-            // Show depth visualization again
             if (isDrawingMode) {
                 showDepthVisualization();
             }
         }
 
-        // --- Depth Data Visualization ---
-        function showDepthVisualization() {
-            if (rawDepthData.length === 0) return;
-            
+        function finishDrawing() {
+            applyIsolation();
+        }
+
+        function cancelDrawing() {
+            isDrawingMode = false;
+            isCurrentlyDrawing = false;
+            document.getElementById('drawingOverlay').classList.remove('active');
+            document.getElementById('drawingControls').style.display = 'none';
+            document.getElementById('modeIndicator').textContent = '3D Navigation Mode';
+            document.getElementById('startDrawBtn').textContent = 'Start Drawing';
+            clearDrawing();
+        }
+
+        async function applyIsolation() {
+            if (drawingPath.length < 3) {
+                alert('Please draw a complete outline around the object.');
+                return;
+            }
+
+            showLoading(true, 'Applying isolation...');
+
+            // Convert drawing coordinates to data coordinates
             const canvas = drawingCanvas;
-            const ctx = drawingContext;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Create a 2D visualization of the depth data
-            const imageWidth = stats.imageWidth;
-            const imageHeight = stats.imageHeight;
-            
-            if (imageWidth === 0 || imageHeight === 0) return;
-            
-            // Calculate scale to fit the canvas
-            const scaleX = canvas.width / imageWidth;
-            const scaleY = canvas.height / imageHeight;
+            const scaleX = canvas.width / dataStats.imageWidth;
+            const scaleY = canvas.height / dataStats.imageHeight;
             const scale = Math.min(scaleX, scaleY);
             
-            const offsetX = (canvas.width - imageWidth * scale) / 2;
-            const offsetY = (canvas.height - imageHeight * scale) / 2;
+            const offsetX = (canvas.width - dataStats.imageWidth * scale) / 2;
+            const offsetY = (canvas.height - dataStats.imageHeight * scale) / 2;
             
-            // Draw depth points as colored dots
-            ctx.save();
-            for (const point of rawDepthData) {
-                const x = offsetX + point.x * scale;
-                const y = offsetY + point.y * scale;
-                
-                // Color based on depth (closer = brighter)
-                const normalizedDepth = (point.depth - stats.minDepth) / (stats.maxDepth - stats.minDepth);
-                const intensity = Math.floor((1 - normalizedDepth) * 255);
-                
-                ctx.fillStyle = `rgb(${intensity}, ${Math.floor(intensity * 0.8)}, ${Math.floor(intensity * 0.6)})`;
-                ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(scale), Math.ceil(scale));
+            const dataSpacePath = drawingPath.map(p => ({
+                x: (p.x - offsetX) / scale,
+                y: (p.y - offsetY) / scale
+            }));
+
+            // Filter points inside the drawn polygon
+            isolatedData = rawDepthData.filter(point => {
+                return pointInPolygon(point, dataSpacePath);
+            });
+
+            document.getElementById('selectedCount').textContent = isolatedData.length.toLocaleString();
+
+            if (isolatedData.length === 0) {
+                alert('No points found in selected area. Try drawing a larger selection.');
+                showLoading(false);
+                return;
             }
-            ctx.restore();
+
+            // Update point cloud with isolated data
+            await updatePointCloudFromIsolated();
             
-            // Add instructions overlay
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(10, 10, 300, 50);
-            ctx.fillStyle = 'white';
-            ctx.font = '14px Arial';
-            ctx.fillText('Draw around the object you want to analyze', 20, 30);
-            ctx.fillText('Brighter areas = closer to camera', 20, 50);
+            cancelDrawing();
+            showLoading(false);
         }
 
-        function hideDepthVisualization() {
-            drawingContext.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        async function updatePointCloudFromIsolated() {
+            // Convert isolated 2D data to 3D (absolute metric coordinates)
+            pointCloud3D = [];
+            const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
+            const focalLength = (dataStats.imageWidth / 2) / Math.tan(fov / 2);
+
+            for (const point of isolatedData) {
+                const z = point.depth;
+                const x = (point.x - dataStats.imageWidth / 2) * z / focalLength;
+                const y = -(point.y - dataStats.imageHeight / 2) * z / focalLength;
+                pointCloud3D.push(new THREE.Vector3(x, y, z));
+            }
+
+            // Center the point cloud but preserve absolute scale
+            centerPointCloud();
+            
+            // Adjust camera to view the isolated object
+            adjustCameraForObject();
+            
+            updateVisualization();
         }
 
-        // --- Point-in-Polygon Algorithm ---
         function pointInPolygon(point, polygon) {
             let inside = false;
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -757,366 +1033,147 @@
             return inside;
         }
 
-        // --- Data Processing Pipeline ---
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            showLoading(true, 'Parsing CSV...');
-            updateProgress(0);
-
-            try {
-                const text = await file.text();
-                updateProgress(20);
-                
-                await parseCSVData(text);
-                updateProgress(40);
-                
-                showUI();
-                
-                // Initialize with all data
-                segmentedData = [...rawDepthData];
-                document.getElementById('segmentedPointsCount').textContent = segmentedData.length.toLocaleString();
-                
-                await runFullPipeline();
-
-            } catch (error) {
-                console.error('Error processing file:', error);
-                alert('Error processing file. Check console for details.');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function applySegmentation() {
-            if (drawingPath.length < 3) {
-                alert('Please draw a complete outline around the object first.');
+        // Voxel generation
+        async function generateVoxels() {
+            if (pointCloud3D.length === 0) {
+                alert('Please upload and isolate object data first.');
                 return;
             }
 
-            showLoading(true, 'Applying segmentation...');
-            await new Promise(r => setTimeout(r, 10));
+            showLoading(true, 'Generating cubic voxels...');
 
-            // Convert drawing coordinates to depth data coordinates
-            const canvas = drawingCanvas;
-            const imageWidth = stats.imageWidth;
-            const imageHeight = stats.imageHeight;
+            const voxelSize = parseFloat(document.getElementById('voxelSize').value);
             
-            const scaleX = canvas.width / imageWidth;
-            const scaleY = canvas.height / imageHeight;
-            const scale = Math.min(scaleX, scaleY);
+            // Calculate bounding box of isolated points
+            const bbox = new THREE.Box3().setFromPoints(pointCloud3D);
+            const min = bbox.min;
+            const max = bbox.max;
+
+            // Calculate grid dimensions
+            const gridX = Math.ceil((max.x - min.x) / voxelSize);
+            const gridY = Math.ceil((max.y - min.y) / voxelSize);
+            const gridZ = Math.ceil((max.z - min.z) / voxelSize);
+
+            const totalVoxels = gridX * gridY * gridZ;
             
-            const offsetX = (canvas.width - imageWidth * scale) / 2;
-            const offsetY = (canvas.height - imageHeight * scale) / 2;
-            
-            // Convert drawing path to depth coordinate space
-            const depthSpacePath = drawingPath.map(p => ({
-                x: (p.x - offsetX) / scale,
-                y: (p.y - offsetY) / scale
-            }));
-            
-            // Filter points that are inside the drawn polygon
-            segmentedData = rawDepthData.filter(point => {
-                return pointInPolygon(point, depthSpacePath);
-            });
-            
-            document.getElementById('segmentedPointsCount').textContent = segmentedData.length.toLocaleString();
-            
-            if (segmentedData.length === 0) {
-                alert('No points found in the selected area. Try drawing a larger selection.');
+            // Safety check for memory
+            if (totalVoxels > 1000000) { // 1M voxel limit
+                alert(`Too many voxels (${totalVoxels.toLocaleString()}). Please increase voxel size.`);
                 showLoading(false);
                 return;
             }
-            
-            await runFullPipeline();
-            
-            // Exit drawing mode
-            disableDrawingMode();
-        }
-        
-        async function runFullPipeline() {
-            finalPoints = [...segmentedData];
-            await calculateAndVisualize();
-        }
 
-        async function calculateAndVisualize() {
-            if (finalPoints.length === 0) {
-                showLoading(false);
-                updateVisualization(); // Clear the screen
-                updateVolumeDisplay(0);
-                updateVoxelStats(0, 0, 0);
-                return;
+            // Clear previous voxel data
+            voxelGrid.clear();
+            filledVoxelGrid.clear();
+
+            // Mark voxels that contain points
+            for (const point of pointCloud3D) {
+                const vx = Math.floor((point.x - min.x) / voxelSize);
+                const vy = Math.floor((point.y - min.y) / voxelSize);
+                const vz = Math.floor((point.z - min.z) / voxelSize);
+                
+                const key = `${vx},${vy},${vz}`;
+                voxelGrid.set(key, true);
             }
-            
-            showLoading(true, 'Creating metric model...');
-            await new Promise(r => setTimeout(r, 10));
-            createMetricPointCloud();
 
-            showLoading(true, 'Calculating solid volume...');
-            await new Promise(r => setTimeout(r, 10));
-            await calculateVolume();
+            // Fill interior voxels using layer-by-layer approach
+            await fillInteriorVoxels(min, voxelSize, gridX, gridY, gridZ);
 
-            showLoading(true, 'Generating visualization...');
-            await new Promise(r => setTimeout(r, 10));
-            createVisualizationData();
+            // Update statistics
+            voxelStats = {
+                filled: filledVoxelGrid.size,
+                total: totalVoxels,
+                voxelSize: voxelSize,
+                voxelVolume: Math.pow(voxelSize, 3),
+                bounds: { min, max, gridX, gridY, gridZ }
+            };
+
+            updateVolumeDisplay();
+            showSections(['volumeSection']);
             updateVisualization();
-
             showLoading(false);
         }
 
-        async function parseCSVData(text) {
-            return new Promise(resolve => {
-                const lines = text.trim().split('\n');
-                rawDepthData = [];
-                let minDepth = Infinity, maxDepth = -Infinity;
-                let maxX = -Infinity, maxY = -Infinity;
+        async function fillInteriorVoxels(minPoint, voxelSize, gridX, gridY, gridZ) {
+            // Fill interior using layer-by-layer flood fill
+            for (let z = 0; z < gridZ; z++) {
+                // Get all surface voxels in this layer
+                const layerSurface = [];
+                for (const [key, _] of voxelGrid) {
+                    const [vx, vy, vz] = key.split(',').map(Number);
+                    if (vz === z) {
+                        layerSurface.push({ x: vx, y: vy });
+                    }
+                }
+
+                if (layerSurface.length < 3) continue;
+
+                // Find convex hull of surface points
+                const hull = convexHull2D(layerSurface);
                 
-                for (let i = 1; i < lines.length; i++) {
-                    const cols = lines[i].split(',');
-                    if (cols.length >= 3) {
-                        const x = parseInt(cols[0]);
-                        const y = parseInt(cols[1]);
-                        const depth = parseFloat(cols[2]);
-                        
-                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0 && isFinite(depth)) {
-                            rawDepthData.push({ x, y, depth, index: rawDepthData.length });
-                            minDepth = Math.min(minDepth, depth);
-                            maxDepth = Math.max(maxDepth, depth);
-                            maxX = Math.max(maxX, x);
-                            maxY = Math.max(maxY, y);
+                // Fill all voxels inside the hull
+                const minX = Math.min(...layerSurface.map(p => p.x));
+                const maxX = Math.max(...layerSurface.map(p => p.x));
+                const minY = Math.min(...layerSurface.map(p => p.y));
+                const maxY = Math.max(...layerSurface.map(p => p.y));
+
+                for (let x = minX; x <= maxX; x++) {
+                    for (let y = minY; y <= maxY; y++) {
+                        if (pointInPolygon2D({ x, y }, hull)) {
+                            const key = `${x},${y},${z}`;
+                            filledVoxelGrid.set(key, {
+                                x: minPoint.x + (x + 0.5) * voxelSize,
+                                y: minPoint.y + (y + 0.5) * voxelSize,
+                                z: minPoint.z + (z + 0.5) * voxelSize
+                            });
                         }
                     }
                 }
-                
-                stats = {
-                    pointCount: rawDepthData.length,
-                    minDepth: minDepth,
-                    maxDepth: maxDepth,
-                    imageWidth: maxX + 1,
-                    imageHeight: maxY + 1,
-                };
-                
-                updateStatsDisplay();
-                resolve();
-            });
-        }
-
-        function createMetricPointCloud() {
-            metricPointCloud = [];
-            if (finalPoints.length === 0) return;
-            const imageWidth = stats.imageWidth;
-            const imageHeight = stats.imageHeight;
-            const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
-            const focalLength = (imageWidth / 2) / Math.tan(fov / 2);
-            for (const p of finalPoints) {
-                const z = p.depth;
-                const x = (p.x - imageWidth / 2) * z / focalLength;
-                const y = -(p.y - imageHeight / 2) * z / focalLength;
-                metricPointCloud.push(new THREE.Vector3(x, y, z));
             }
         }
 
-        async function calculateVolume() {
-            let volumeM3 = 0;
-            if (metricPointCloud.length < 4) {
-                updateVolumeDisplay(0);
-                updateVoxelStats(0, 0, 0);
-                return;
-            }
-            if (currentMethod === 'voxel') {
-                volumeM3 = await calculateVoxelVolume();
-            }
-            updateVolumeDisplay(volumeM3);
-        }
-
-        async function calculateVoxelVolume() {
-            const voxelSize = parseFloat(document.getElementById('voxelSize').value);
-            if (voxelSize <= 0) return 0;
-            
-            const voxelVolume = Math.pow(voxelSize, 3);
-            
-            // Calculate bounding box for the point cloud (safe for large datasets)
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let minZ = Infinity, maxZ = -Infinity;
-            
-            for (const point of metricPointCloud) {
-                if (point.x < minX) minX = point.x;
-                if (point.x > maxX) maxX = point.x;
-                if (point.y < minY) minY = point.y;
-                if (point.y > maxY) maxY = point.y;
-                if (point.z < minZ) minZ = point.z;
-                if (point.z > maxZ) maxZ = point.z;
-            }
-            
-            const bounds = { minX, maxX, minY, maxY, minZ, maxZ };
-            
-            // Calculate grid dimensions
-            const gridX = Math.ceil((bounds.maxX - bounds.minX) / voxelSize);
-            const gridY = Math.ceil((bounds.maxY - bounds.minY) / voxelSize);
-            const gridZ = Math.ceil((bounds.maxZ - bounds.minZ) / voxelSize);
-            const totalVoxels = gridX * gridY * gridZ;
-            
-            // SAFETY CHECK: Prevent excessive memory usage
-            const maxAllowedVoxels = 50_000_000; // ~50M voxels limit
-            if (totalVoxels > maxAllowedVoxels) {
-                const minSafeVoxelSize = Math.pow((bounds.maxX - bounds.minX) * (bounds.maxY - bounds.minY) * (bounds.maxZ - bounds.minZ) / maxAllowedVoxels, 1/3);
-                alert(`Voxel size too small! Would create ${totalVoxels.toLocaleString()} voxels.\nMinimum safe voxel size: ${minSafeVoxelSize.toFixed(4)}m\nCurrent: ${voxelSize}m`);
-                return 0;
-            }
-            
-            // SOLID VOXEL FILLING: Fill interior of object, not just surface
-            const filledVoxels = await fillSolidVoxels(bounds, voxelSize, gridX, gridY, gridZ);
-            
-            // Store voxel data for visualization
-            voxelData = {
-                occupied: filledVoxels,
-                bounds: bounds,
-                voxelSize: voxelSize,
-                gridDimensions: { x: gridX, y: gridY, z: gridZ }
-            };
-            
-            // Update voxel statistics
-            updateVoxelStats(filledVoxels.size, totalVoxels, voxelVolume * 1_000_000); // Convert to cm³
-            
-            return filledVoxels.size * voxelVolume;
-        }
-
-        async function fillSolidVoxels(bounds, voxelSize, gridX, gridY, gridZ) {
-            const filledVoxels = new Set();
-            const maxVoxelSetSize = 10_000_000; // 10M voxel limit for safety
-            
-            // Step 1: Group points by Z layers (more memory efficient)
-            const layerPoints = new Map();
-            for (const point of metricPointCloud) {
-                const vz = Math.floor((point.z - bounds.minZ) / voxelSize);
-                if (!layerPoints.has(vz)) {
-                    layerPoints.set(vz, []);
-                }
-                layerPoints.get(vz).push({
-                    x: Math.floor((point.x - bounds.minX) / voxelSize),
-                    y: Math.floor((point.y - bounds.minY) / voxelSize)
-                });
-            }
-            
-            // Step 2: Fill each Z layer with progress tracking and memory checks
-            const layers = Array.from(layerPoints.entries());
-            let processedLayers = 0;
-            let totalVoxelsAdded = 0;
-            
-            for (const [zIndex, points] of layers) {
-                // Update progress for large datasets
-                if (layers.length > 10 && processedLayers % Math.ceil(layers.length / 10) === 0) {
-                    const progress = Math.round((processedLayers / layers.length) * 100);
-                    showLoading(true, `Filling layer ${processedLayers + 1}/${layers.length} (${progress}%) - ${totalVoxelsAdded.toLocaleString()} voxels`);
-                    await new Promise(r => setTimeout(r, 1));
-                }
-                
-                if (points.length < 3) {
-                    // Not enough points to form a boundary, just add surface points
-                    for (const point of points) {
-                        if (totalVoxelsAdded < maxVoxelSetSize) {
-                            filledVoxels.add(`${point.x},${point.y},${zIndex}`);
-                            totalVoxelsAdded++;
-                        }
-                    }
-                    processedLayers++;
-                    continue;
-                }
-                
-                // Find convex hull of points in this layer
-                const hull = convexHull2D(points);
-                
-                // Fill all voxels inside the convex hull
-                const minXLayer = Math.min(...points.map(p => p.x));
-                const maxXLayer = Math.max(...points.map(p => p.x));
-                const minYLayer = Math.min(...points.map(p => p.y));
-                const maxYLayer = Math.max(...points.map(p => p.y));
-                
-                // Estimate voxels in this layer before adding
-                const layerVoxelEstimate = (maxXLayer - minXLayer + 1) * (maxYLayer - minYLayer + 1);
-                
-                if (totalVoxelsAdded + layerVoxelEstimate > maxVoxelSetSize) {
-                    console.warn(`Voxel limit reached at layer ${processedLayers + 1}/${layers.length}. Using ${totalVoxelsAdded.toLocaleString()} voxels.`);
-                    break;
-                }
-                
-                for (let x = minXLayer; x <= maxXLayer; x++) {
-                    for (let y = minYLayer; y <= maxYLayer; y++) {
-                        if (pointInPolygon2D({x, y}, hull)) {
-                            if (totalVoxelsAdded < maxVoxelSetSize) {
-                                filledVoxels.add(`${x},${y},${zIndex}`);
-                                totalVoxelsAdded++;
-                            } else {
-                                console.warn(`Set size limit reached. Total voxels: ${totalVoxelsAdded.toLocaleString()}`);
-                                return filledVoxels;
-                            }
-                        }
-                    }
-                }
-                
-                processedLayers++;
-            }
-            
-            console.log(`Solid fill complete: ${totalVoxelsAdded.toLocaleString()} voxels in ${processedLayers} layers`);
-            return filledVoxels;
-        }
-
-        // Convex hull algorithm (Graham scan)
         function convexHull2D(points) {
             if (points.length < 3) return points;
-            
+
             // Remove duplicates
-            const uniquePoints = [];
-            const seen = new Set();
-            for (const p of points) {
-                const key = `${p.x},${p.y}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniquePoints.push(p);
-                }
-            }
-            
+            const uniquePoints = Array.from(
+                new Map(points.map(p => [`${p.x},${p.y}`, p])).values()
+            );
+
             if (uniquePoints.length < 3) return uniquePoints;
-            
-            // Find the bottom-most point (and left-most in case of tie)
+
+            // Find bottommost point
             let start = uniquePoints[0];
-            for (let i = 1; i < uniquePoints.length; i++) {
-                const p = uniquePoints[i];
+            for (const p of uniquePoints) {
                 if (p.y < start.y || (p.y === start.y && p.x < start.x)) {
                     start = p;
                 }
             }
-            
-            // Sort points by polar angle with respect to start point
+
+            // Sort by polar angle
             const others = uniquePoints.filter(p => p !== start);
             others.sort((a, b) => {
                 const angleA = Math.atan2(a.y - start.y, a.x - start.x);
                 const angleB = Math.atan2(b.y - start.y, b.x - start.x);
-                if (angleA !== angleB) return angleA - angleB;
-                // If same angle, sort by distance
-                const distA = (a.x - start.x) ** 2 + (a.y - start.y) ** 2;
-                const distB = (b.x - start.x) ** 2 + (b.y - start.y) ** 2;
-                return distA - distB;
+                return angleA - angleB;
             });
-            
+
             // Build convex hull
             const hull = [start];
             for (const point of others) {
-                // Remove points that create clockwise turn
                 while (hull.length >= 2) {
-                    const crossProduct = (hull[hull.length-1].x - hull[hull.length-2].x) * (point.y - hull[hull.length-2].y) - 
-                                        (hull[hull.length-1].y - hull[hull.length-2].y) * (point.x - hull[hull.length-2].x);
-                    if (crossProduct > 0) break; // Counter-clockwise turn, keep the point
+                    const cross = (hull[hull.length-1].x - hull[hull.length-2].x) * (point.y - hull[hull.length-2].y) - 
+                                 (hull[hull.length-1].y - hull[hull.length-2].y) * (point.x - hull[hull.length-2].x);
+                    if (cross > 0) break;
                     hull.pop();
                 }
                 hull.push(point);
             }
-            
+
             return hull;
         }
 
-        // Point-in-polygon test for 2D voxel coordinates
         function pointInPolygon2D(point, polygon) {
             if (polygon.length < 3) return false;
             
@@ -1130,391 +1187,194 @@
             return inside;
         }
 
-        function createVisualizationData() {
-            vizPointCloud = [];
-            if (metricPointCloud.length === 0) return;
-            
-            // Calculate bounding box manually for large datasets
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let minZ = Infinity, maxZ = -Infinity;
-            
-            for (const point of metricPointCloud) {
-                if (point.x < minX) minX = point.x;
-                if (point.x > maxX) maxX = point.x;
-                if (point.y < minY) minY = point.y;
-                if (point.y > maxY) maxY = point.y;
-                if (point.z < minZ) minZ = point.z;
-                if (point.z > maxZ) maxZ = point.z;
+        // Visualization
+        function updateVisualization() {
+            // Clear existing meshes
+            if (pointCloudMesh) {
+                scene.remove(pointCloudMesh);
+                pointCloudMesh = null;
             }
-            
-            const center = new THREE.Vector3(
-                (minX + maxX) / 2,
-                (minY + maxY) / 2,
-                (minZ + maxZ) / 2
-            );
-            
-            const sizeX = maxX - minX;
-            const sizeY = maxY - minY;
-            const sizeZ = maxZ - minZ;
-            const maxDim = Math.max(sizeX, sizeY, sizeZ);
-            
-            if (maxDim === 0) return;
-            for (const p of metricPointCloud) {
-                vizPointCloud.push(p.clone().sub(center).divideScalar(maxDim));
+            if (voxelMesh) {
+                scene.remove(voxelMesh);
+                voxelMesh = null;
             }
-        }
-        
-        // --- Voxel Visualization Functions ---
-        function createVoxelGridVisualization() {
-            if (voxelGridLines) {
-                scene.remove(voxelGridLines);
-                voxelGridLines = null;
+            if (wireframeMesh) {
+                scene.remove(wireframeMesh);
+                wireframeMesh = null;
             }
-            
-            if (!voxelData.bounds || voxelData.occupied.size === 0) return;
-            
-            const { bounds, voxelSize, gridDimensions } = voxelData;
-            
-            // Create wireframe grid around the object bounds
-            const geometry = new THREE.BufferGeometry();
-            const vertices = [];
-            
-            // Calculate normalized bounds for visualization manually for large datasets
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let minZ = Infinity, maxZ = -Infinity;
-            
-            for (const point of metricPointCloud) {
-                if (point.x < minX) minX = point.x;
-                if (point.x > maxX) maxX = point.x;
-                if (point.y < minY) minY = point.y;
-                if (point.y > maxY) maxY = point.y;
-                if (point.z < minZ) minZ = point.z;
-                if (point.z > maxZ) maxZ = point.z;
+
+            // Show point cloud
+            if (document.getElementById('showPoints').checked && pointCloud3D.length > 0) {
+                createPointCloudMesh();
             }
-            
-            const center = new THREE.Vector3(
-                (minX + maxX) / 2,
-                (minY + maxY) / 2,
-                (minZ + maxZ) / 2
-            );
-            
-            const sizeX = maxX - minX;
-            const sizeY = maxY - minY;
-            const sizeZ = maxZ - minZ;
-            const maxDim = Math.max(sizeX, sizeY, sizeZ);
-            
-            // Convert bounds to visualization space
-            const vizBounds = {
-                minX: (bounds.minX - center.x) / maxDim,
-                maxX: (bounds.maxX - center.x) / maxDim,
-                minY: (bounds.minY - center.y) / maxDim,
-                maxY: (bounds.maxY - center.y) / maxDim,
-                minZ: (bounds.minZ - center.z) / maxDim,
-                maxZ: (bounds.maxZ - center.z) / maxDim
-            };
-            
-            const vizVoxelSize = voxelSize / maxDim;
-            
-            // Create grid lines (sample every few voxels to avoid too many lines)
-            const step = Math.max(1, Math.floor(Math.max(gridDimensions.x, gridDimensions.y, gridDimensions.z) / 20));
-            
-            // X lines
-            for (let i = 0; i <= gridDimensions.x; i += step) {
-                const x = vizBounds.minX + i * vizVoxelSize;
-                vertices.push(x, vizBounds.minY, vizBounds.minZ);
-                vertices.push(x, vizBounds.maxY, vizBounds.minZ);
-                vertices.push(x, vizBounds.minY, vizBounds.maxZ);
-                vertices.push(x, vizBounds.maxY, vizBounds.maxZ);
-                vertices.push(x, vizBounds.minY, vizBounds.minZ);
-                vertices.push(x, vizBounds.minY, vizBounds.maxZ);
-                vertices.push(x, vizBounds.maxY, vizBounds.minZ);
-                vertices.push(x, vizBounds.maxY, vizBounds.maxZ);
+
+            // Show voxels
+            if (document.getElementById('showVoxels').checked && filledVoxelGrid.size > 0) {
+                createVoxelMesh();
             }
-            
-            // Y lines
-            for (let i = 0; i <= gridDimensions.y; i += step) {
-                const y = vizBounds.minY + i * vizVoxelSize;
-                vertices.push(vizBounds.minX, y, vizBounds.minZ);
-                vertices.push(vizBounds.maxX, y, vizBounds.minZ);
-                vertices.push(vizBounds.minX, y, vizBounds.maxZ);
-                vertices.push(vizBounds.maxX, y, vizBounds.maxZ);
-                vertices.push(vizBounds.minX, y, vizBounds.minZ);
-                vertices.push(vizBounds.minX, y, vizBounds.maxZ);
-                vertices.push(vizBounds.maxX, y, vizBounds.minZ);
-                vertices.push(vizBounds.maxX, y, vizBounds.maxZ);
+
+            // Show wireframe
+            if (document.getElementById('showWireframe').checked && filledVoxelGrid.size > 0) {
+                createWireframeMesh();
             }
-            
-            // Z lines
-            for (let i = 0; i <= gridDimensions.z; i += step) {
-                const z = vizBounds.minZ + i * vizVoxelSize;
-                vertices.push(vizBounds.minX, vizBounds.minY, z);
-                vertices.push(vizBounds.maxX, vizBounds.minY, z);
-                vertices.push(vizBounds.minX, vizBounds.maxY, z);
-                vertices.push(vizBounds.maxX, vizBounds.maxY, z);
-                vertices.push(vizBounds.minX, vizBounds.minY, z);
-                vertices.push(vizBounds.minX, vizBounds.maxY, z);
-                vertices.push(vizBounds.maxX, vizBounds.minY, z);
-                vertices.push(vizBounds.maxX, vizBounds.maxY, z);
-            }
-            
-            geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
-            
-            const material = new THREE.LineBasicMaterial({ 
-                color: 0x333333, 
-                transparent: true, 
-                opacity: 0.3 
-            });
-            
-            voxelGridLines = new THREE.LineSegments(geometry, material);
-            scene.add(voxelGridLines);
-        }
-        
-        function createOccupiedVoxelsVisualization() {
-            if (occupiedVoxelsGroup) {
-                scene.remove(occupiedVoxelsGroup);
-                occupiedVoxelsGroup = null;
-            }
-            
-            if (!voxelData.bounds || voxelData.occupied.size === 0) return;
-            
-            const { bounds, voxelSize, occupied } = voxelData;
-            
-            // Calculate normalization parameters manually for large datasets
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            let minZ = Infinity, maxZ = -Infinity;
-            
-            for (const point of metricPointCloud) {
-                if (point.x < minX) minX = point.x;
-                if (point.x > maxX) maxX = point.x;
-                if (point.y < minY) minY = point.y;
-                if (point.y > maxY) maxY = point.y;
-                if (point.z < minZ) minZ = point.z;
-                if (point.z > maxZ) maxZ = point.z;
-            }
-            
-            const center = new THREE.Vector3(
-                (minX + maxX) / 2,
-                (minY + maxY) / 2,
-                (minZ + maxZ) / 2
-            );
-            
-            const sizeX = maxX - minX;
-            const sizeY = maxY - minY;
-            const sizeZ = maxZ - minZ;
-            const maxDim = Math.max(sizeX, sizeY, sizeZ);
-            
-            const vizVoxelSize = voxelSize / maxDim;
-            
-            // NEW APPROACH: Create solid geometry from layers instead of individual voxels
-            occupiedVoxelsGroup = createSolidLayeredGeometry(bounds, voxelSize, occupied, center, maxDim);
-            scene.add(occupiedVoxelsGroup);
         }
 
-        function createSolidLayeredGeometry(bounds, voxelSize, occupied, center, maxDim) {
-            // Group voxels by Z layers for efficient solid geometry creation
-            const layerVoxels = new Map();
+        function createPointCloudMesh() {
+            const geometry = new THREE.BufferGeometry().setFromPoints(pointCloud3D);
+            const material = new THREE.PointsMaterial({
+                color: 0x00d4ff,
+                size: parseFloat(document.getElementById('pointSize').value),
+                sizeAttenuation: false
+            });
             
-            for (const voxelKey of occupied) {
-                const [vx, vy, vz] = voxelKey.split(',').map(Number);
-                if (!layerVoxels.has(vz)) {
-                    layerVoxels.set(vz, []);
-                }
-                layerVoxels.get(vz).push({ x: vx, y: vy });
-            }
-            
-            const solidGroup = new THREE.Group();
-            const material = new THREE.MeshLambertMaterial({ 
-                color: 0x4facfe, 
-                transparent: true, 
+            pointCloudMesh = new THREE.Points(geometry, material);
+            scene.add(pointCloudMesh);
+        }
+
+        function createVoxelMesh() {
+            const voxelSize = voxelStats.voxelSize;
+            const geometry = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
+            const material = new THREE.MeshLambertMaterial({
+                color: 0x00d4ff,
+                transparent: true,
                 opacity: parseFloat(document.getElementById('voxelOpacity').value)
             });
+
+            voxelMesh = new THREE.InstancedMesh(geometry, material, filledVoxelGrid.size);
             
-            // Create solid geometry for each Z layer
-            for (const [zIndex, layerPoints] of layerVoxels) {
-                if (layerPoints.length < 3) continue; // Skip layers with too few points
-                
-                // Create extruded solid geometry for this layer
-                const layerMesh = createLayerSolidMesh(layerPoints, zIndex, bounds, voxelSize, center, maxDim, material);
-                if (layerMesh) {
-                    solidGroup.add(layerMesh);
+            let index = 0;
+            const matrix = new THREE.Matrix4();
+            
+            // Use absolute coordinates for voxel positioning
+            for (const [key, position] of filledVoxelGrid) {
+                matrix.makeTranslation(position.x, position.y, position.z);
+                voxelMesh.setMatrixAt(index, matrix);
+                index++;
+            }
+            
+            voxelMesh.instanceMatrix.needsUpdate = true;
+            scene.add(voxelMesh);
+        }
+
+        function createWireframeMesh() {
+            const voxelSize = voxelStats.voxelSize;
+            const geometry = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
+            const edges = new THREE.EdgesGeometry(geometry);
+            const material = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.3, transparent: true });
+
+            wireframeMesh = new THREE.InstancedMesh(edges, material, filledVoxelGrid.size);
+            
+            let index = 0;
+            const matrix = new THREE.Matrix4();
+            
+            // Use absolute coordinates for wireframe positioning
+            for (const [key, position] of filledVoxelGrid) {
+                matrix.makeTranslation(position.x, position.y, position.z);
+                wireframeMesh.setMatrixAt(index, matrix);
+                index++;
+            }
+            
+            wireframeMesh.instanceMatrix.needsUpdate = true;
+            scene.add(wireframeMesh);
+        }
+
+        // UI Updates
+        function updateDataStats() {
+            const grid = document.getElementById('statsGrid');
+            grid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${dataStats.pointCount.toLocaleString()}</div>
+                    <div class="stat-label">Data Points</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${dataStats.imageWidth}×${dataStats.imageHeight}</div>
+                    <div class="stat-label">Resolution</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${dataStats.minDepth.toFixed(3)}m</div>
+                    <div class="stat-label">Min Depth</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${dataStats.maxDepth.toFixed(3)}m</div>
+                    <div class="stat-label">Max Depth</div>
+                </div>
+            `;
+        }
+
+        function updateVolumeDisplay() {
+            const volumeM3 = voxelStats.filled * voxelStats.voxelVolume;
+            const volumeCm3 = volumeM3 * 1000000;
+            
+            document.getElementById('volumeDisplay').textContent = 
+                `Volume: ${volumeCm3.toLocaleString(undefined, {maximumFractionDigits: 2})} cm³`;
+            
+            document.getElementById('filledVoxels').textContent = voxelStats.filled.toLocaleString();
+            document.getElementById('totalVoxels').textContent = voxelStats.total.toLocaleString();
+            document.getElementById('voxelVolumeStat').textContent = 
+                (voxelStats.voxelVolume * 1000000000).toFixed(2); // mm³
+            document.getElementById('fillRatio').textContent = 
+                ((voxelStats.filled / voxelStats.total) * 100).toFixed(1) + '%';
+        }
+
+        function updateVoxelSizeDisplay(e) {
+            document.getElementById('voxelSizeValue').textContent = e.target.value;
+        }
+
+        function updateFovDisplay(e) {
+            document.getElementById('fovValue').textContent = e.target.value;
+            
+            // Recalculate point cloud with new FOV if data exists
+            if (rawDepthData.length > 0) {
+                if (isolatedData.length > 0) {
+                    updatePointCloudFromIsolated();
+                } else {
+                    createPointCloud();
                 }
             }
-            
-            return solidGroup;
         }
 
-        function createLayerSolidMesh(layerPoints, zIndex, bounds, voxelSize, center, maxDim, material) {
-            // Find the convex hull of points in this layer
-            const hull = convexHull2D(layerPoints);
-            if (hull.length < 3) return null;
-            
-            // Create 2D shape from convex hull
-            const shape = new THREE.Shape();
-            
-            // Convert hull points to visualization coordinates
-            const vizPoints = hull.map(p => {
-                const x = bounds.minX + (p.x + 0.5) * voxelSize;
-                const y = bounds.minY + (p.y + 0.5) * voxelSize;
-                const vizX = (x - center.x) / maxDim;
-                const vizY = (y - center.y) / maxDim;
-                return { x: vizX, y: vizY };
-            });
-            
-            // Create the shape path
-            shape.moveTo(vizPoints[0].x, vizPoints[0].y);
-            for (let i = 1; i < vizPoints.length; i++) {
-                shape.lineTo(vizPoints[i].x, vizPoints[i].y);
+        function updatePointSizeDisplay(e) {
+            document.getElementById('pointSizeValue').textContent = e.target.value;
+            if (pointCloudMesh) {
+                pointCloudMesh.material.size = parseFloat(e.target.value);
             }
-            shape.lineTo(vizPoints[0].x, vizPoints[0].y); // Close the shape
-            
-            // Extrude the shape to create solid geometry
-            const vizVoxelHeight = voxelSize / maxDim;
-            const extrudeSettings = {
-                depth: vizVoxelHeight,
-                bevelEnabled: false
-            };
-            
-            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-            const mesh = new THREE.Mesh(geometry, material);
-            
-            // Position the layer at correct Z height
-            const z = bounds.minZ + (zIndex + 0.5) * voxelSize;
-            const vizZ = (z - center.z) / maxDim;
-            mesh.position.z = vizZ - vizVoxelHeight / 2; // Center the extrusion
-            
-            return mesh;
         }
-        
-        function updateVisualization() {
-            if (scene) {
-                if (pointCloud) scene.remove(pointCloud);
-                if (meshSurface) scene.remove(meshSurface);
-                if (voxelGridLines) scene.remove(voxelGridLines);
-                if (occupiedVoxelsGroup) scene.remove(occupiedVoxelsGroup);
+
+        function updateVoxelOpacityDisplay(e) {
+            document.getElementById('voxelOpacityValue').textContent = e.target.value;
+            if (voxelMesh) {
+                voxelMesh.material.opacity = parseFloat(e.target.value);
             }
-            if (vizPointCloud.length === 0) {
-                renderer.render(scene, camera);
-                return;
-            };
-            if (document.getElementById('showPointCloud').checked) createPointCloudVisualization();
-            if (document.getElementById('showMesh').checked) createMeshVisualization();
-            if (document.getElementById('showVoxelGrid').checked) createVoxelGridVisualization();
-            if (document.getElementById('showOccupiedVoxels').checked) createOccupiedVoxelsVisualization();
         }
 
-        function createPointCloudVisualization() {
-            const geometry = new THREE.BufferGeometry().setFromPoints(vizPointCloud);
-            const material = new THREE.PointsMaterial({
-                size: parseFloat(document.getElementById('pointSize').value),
-                sizeAttenuation: false,
-                color: 0x4facfe
-            });
-            pointCloud = new THREE.Points(geometry, material);
-            scene.add(pointCloud);
-        }
-        
-        function createMeshVisualization() {
-            const geometry = new THREE.BufferGeometry().setFromPoints(vizPointCloud);
-            const material = new THREE.MeshLambertMaterial({
-                color: 0x00f2fe,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.8
-            });
-            meshSurface = new THREE.Mesh(geometry, material);
-            scene.add(meshSurface);
-        }
-
+        // Utility functions
         function showLoading(show, text = 'Processing...') {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
             document.getElementById('loadingText').textContent = text;
         }
 
         function updateProgress(percent) {
-            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressBar').style.width = percent + '%';
         }
 
-        function showUI() {
-            document.getElementById('statsSection').style.display = 'block';
-            document.getElementById('vizSection').style.display = 'block';
-            document.getElementById('volumeSection').style.display = 'block';
-            document.getElementById('segmentationSection').style.display = 'block';
-            document.getElementById('advancedSection').style.display = 'block';
-        }
-
-        function updateStatsDisplay() {
-            const grid = document.getElementById('statsGrid');
-            grid.innerHTML = `
-                <div class="stat-item"><div class="stat-value">${stats.pointCount.toLocaleString()}</div><div class="stat-label">Raw Points</div></div>
-                <div class="stat-item"><div class="stat-value">${stats.imageWidth}×${stats.imageHeight}</div><div class="stat-label">Sensor Resolution</div></div>
-                <div class="stat-item"><div class="stat-value">${stats.minDepth.toFixed(3)}m</div><div class="stat-label">Min Depth</div></div>
-                <div class="stat-item"><div class="stat-value">${stats.maxDepth.toFixed(3)}m</div><div class="stat-label">Max Depth</div></div>
-            `;
-        }
-
-        function updateVolumeDisplay(volumeM3) {
-            const volumeCm3 = volumeM3 * 1_000_000;
-            const result = document.getElementById('volumeResult');
-            result.innerHTML = `Volume: ${volumeCm3.toLocaleString(undefined, {maximumFractionDigits: 2})} cm³`;
-        }
-        
-        function updateVoxelStats(occupiedCount, totalCount, voxelVolumeCm3) {
-            const statsElement = document.getElementById('voxelStats');
-            if (occupiedCount > 0) {
-                statsElement.style.display = 'block';
-                document.getElementById('occupiedVoxels').textContent = occupiedCount.toLocaleString();
-                document.getElementById('totalVoxels').textContent = totalCount.toLocaleString();
-                document.getElementById('voxelVolume').textContent = voxelVolumeCm3.toFixed(6);
-                document.getElementById('occupancyRate').textContent = ((occupiedCount / totalCount) * 100).toFixed(2) + '%';
-            } else {
-                statsElement.style.display = 'none';
-            }
-        }
-
-        function setupBasicControls() {
-            let isMouseDown = false;
-            let prevMouseX = 0, prevMouseY = 0;
-            const canvas = renderer.domElement;
-            
-            canvas.addEventListener('mousedown', e => { 
-                if (isDrawingMode) return;
-                isMouseDown = true; 
-                prevMouseX = e.clientX; 
-                prevMouseY = e.clientY; 
+        function showSections(sectionIds) {
+            sectionIds.forEach(id => {
+                document.getElementById(id).classList.remove('hidden');
             });
-            canvas.addEventListener('mouseup', () => isMouseDown = false);
-            canvas.addEventListener('mouseout', () => isMouseDown = false);
-            canvas.addEventListener('mousemove', e => {
-                if (!isMouseDown || isDrawingMode) return;
-                const deltaX = e.clientX - prevMouseX;
-                const deltaY = e.clientY - prevMouseY;
-                scene.rotation.y += deltaX * 0.005;
-                scene.rotation.x += deltaY * 0.005;
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
-            });
-            canvas.addEventListener('wheel', e => { 
-                if (isDrawingMode) return;
-                camera.position.z *= (e.deltaY > 0 ? 1.1 : 0.9); 
-            }, { passive: true });
         }
 
         function onWindowResize() {
-            const container = document.querySelector('.main-view');
+            const container = document.querySelector('.viewer-container');
             camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(container.clientWidth, container.clientHeight);
             
-            // Update drawing canvas size
-            if (drawingCanvas) {
-                drawingCanvas.width = container.clientWidth;
-                drawingCanvas.height = container.clientHeight;
-                if (isDrawingMode && rawDepthData.length > 0) {
-                    showDepthVisualization();
-                }
+            // Update drawing canvas
+            drawingCanvas.width = container.clientWidth;
+            drawingCanvas.height = container.clientHeight;
+            
+            if (isDrawingMode && rawDepthData.length > 0) {
+                showDepthVisualization();
             }
         }
 
@@ -1523,95 +1383,8 @@
             renderer.render(scene, camera);
         }
 
-        // --- Event Listeners ---
-        document.getElementById('csvFile').addEventListener('change', handleFileUpload);
-        
-        // Drawing controls
-        document.getElementById('enableDrawingBtn').addEventListener('click', () => {
-            if (rawDepthData.length === 0) {
-                alert('Please upload a CSV file first.');
-                return;
-            }
-            
-            if (isDrawingMode) {
-                disableDrawingMode();
-            } else {
-                enableDrawingMode();
-            }
-        });
-
-        document.getElementById('clearDrawingBtn').addEventListener('click', clearDrawing);
-        document.getElementById('applySegmentationBtn').addEventListener('click', applySegmentation);
-
-        // Drawing overlay controls
-        document.getElementById('toggleDrawBtn').addEventListener('click', () => {
-            // Toggle drawing functionality here if needed
-        });
-
-        document.getElementById('clearBtn').addEventListener('click', clearDrawing);
-        document.getElementById('doneBtn').addEventListener('click', disableDrawingMode);
-
-        const recalcControls = ['voxelSize', 'cameraFov'];
-        recalcControls.forEach(id => {
-            document.getElementById(id).addEventListener('change', async () => {
-                if(finalPoints.length > 0) await calculateAndVisualize();
-            });
-        });
-
-        document.getElementById('pointSize').addEventListener('input', e => {
-            document.getElementById('pointSizeValue').textContent = e.target.value;
-            if (pointCloud) pointCloud.material.size = parseFloat(e.target.value);
-        });
-        document.getElementById('voxelSize').addEventListener('input', e => {
-            document.getElementById('voxelSizeValue').textContent = e.target.value;
-        });
-        document.getElementById('cameraFov').addEventListener('input', e => {
-            document.getElementById('fovValue').textContent = e.target.value;
-        });
-        document.getElementById('voxelOpacity').addEventListener('input', e => {
-            document.getElementById('voxelOpacityValue').textContent = e.target.value;
-            if (occupiedVoxelsGroup) {
-                // Handle different visualization approaches
-                if (occupiedVoxelsGroup.material) {
-                    // InstancedMesh case
-                    occupiedVoxelsGroup.material.opacity = parseFloat(e.target.value);
-                } else if (occupiedVoxelsGroup.children) {
-                    // Group case - update all child materials
-                    occupiedVoxelsGroup.children.forEach(child => {
-                        if (child.material) {
-                            child.material.opacity = parseFloat(e.target.value);
-                        }
-                    });
-                }
-            }
-        });
-        
-        document.getElementById('showPointCloud').addEventListener('change', updateVisualization);
-        document.getElementById('showMesh').addEventListener('change', updateVisualization);
-        document.getElementById('showVoxelGrid').addEventListener('change', updateVisualization);
-        document.getElementById('showOccupiedVoxels').addEventListener('change', updateVisualization);
-
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', async (e) => {
-                const newMethod = e.target.dataset.method;
-                if(newMethod === 'voxel') {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    e.target.classList.add('active');
-                    currentMethod = newMethod;
-                    if (finalPoints.length > 0) await calculateVolume();
-                } else {
-                    alert("Only the Voxel method is implemented in this version.");
-                }
-            });
-        });
-        
-        // Initialize
-        initThreeJS();
-        
-        // Initialize drawing canvas when DOM is ready
-        window.addEventListener('load', () => {
-            initDrawingCanvas();
-        });
+        // Start the application
+        init();
     </script>
 </body>
 </html>
