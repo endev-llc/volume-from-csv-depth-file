@@ -730,16 +730,16 @@
                 // Skip header if present
                 const startLine = lines[0].includes(',') && isNaN(parseFloat(lines[0].split(',')[0])) ? 1 : 0;
 
+                // First, read all valid points so we know the range
+                const allPoints = [];
                 for (let i = startLine; i < lines.length; i++) {
                     const cols = lines[i].split(',');
                     if (cols.length >= 3) {
                         const x = parseFloat(cols[0]);
                         const y = parseFloat(cols[1]);
                         const depth = parseFloat(cols[2]);
-
                         if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0) {
-                            rawDepthData.push({ x, y, depth });
-                            
+                            allPoints.push({ x, y, depth });
                             minDepth = Math.min(minDepth, depth);
                             maxDepth = Math.max(maxDepth, depth);
                             minX = Math.min(minX, x);
@@ -750,11 +750,18 @@
                     }
                 }
 
+                // Determine the cutoff X for top 10% (now using X axis for vertical cropping)
+                const cropThresholdX = minX + (maxX - minX) * 0.10;
+
+                // Keep only points below the crop line (i.e., remove top 10% in X direction)
+                rawDepthData = allPoints.filter(p => p.x > cropThresholdX);
+
                 dataStats = {
                     pointCount: rawDepthData.length,
                     minDepth, maxDepth,
-                    minX, maxX, minY, maxY,
-                    imageWidth: maxX - minX + 1,
+                    minX: cropThresholdX, maxX,
+                    minY, maxY,
+                    imageWidth: maxX - cropThresholdX + 1,
                     imageHeight: maxY - minY + 1
                 };
 
