@@ -860,6 +860,15 @@
 
             if (rawDepthData.length === 0) return;
 
+            // --- FIX: Calculate min/max depth from the *currently displayed data* for better color contrast ---
+            let displayMinDepth = Infinity;
+            let displayMaxDepth = -Infinity;
+            for (const point of rawDepthData) {
+                if (point.depth < displayMinDepth) displayMinDepth = point.depth;
+                if (point.depth > displayMaxDepth) displayMaxDepth = point.depth;
+            }
+            // --- END FIX ---
+
             // Calculate scale to fit canvas
             const scaleX = canvas.width / dataStats.imageWidth;
             const scaleY = canvas.height / dataStats.imageHeight;
@@ -868,16 +877,25 @@
             const offsetX = (canvas.width - dataStats.imageWidth * scale) / 2;
             const offsetY = (canvas.height - dataStats.imageHeight * scale) / 2;
 
+            const depthRange = displayMaxDepth - displayMinDepth; // Use the new, local range
+
             // Draw depth points
             ctx.save();
             for (const point of rawDepthData) {
                 const x = offsetX + point.x * scale;
                 const y = offsetY + point.y * scale;
                 
-                const normalizedDepth = (point.depth - dataStats.minDepth) / (dataStats.maxDepth - dataStats.minDepth);
-                const intensity = Math.floor((1 - normalizedDepth) * 255);
+                // Normalize depth based on the local range to ensure full color spectrum is used
+                const normalizedDepth = depthRange > 0 
+                    ? (point.depth - displayMinDepth) / depthRange
+                    : 0.5; // If all points have same depth, use a mid-color
+
+                // Map normalized depth to a hue value in the HSL color space.
+                // We'll map it from blue (240) for close points to red (0) for far points.
+                const hue = (1 - normalizedDepth) * 240; 
                 
-                ctx.fillStyle = `rgb(${intensity}, ${Math.floor(intensity * 0.7)}, ${Math.floor(intensity * 0.5)})`;
+                // Use HSL for a vibrant, easily distinguishable color map.
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
                 ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(scale), Math.ceil(scale));
             }
             ctx.restore();
