@@ -368,7 +368,7 @@
             <div class="app-title">🧊 Cubic Voxel Analyzer</div>
             
             <div class="section">
-                <div class="section-title">📁 Data Import</div>
+                <div class="section-title">📂 Data Import</div>
                 <div class="upload-area" id="uploadArea">
                     <div style="font-size: 18px; margin-bottom: 10px;">📊</div>
                     <div>Drop CSV file here or click to browse</div>
@@ -501,10 +501,11 @@
         let voxelMesh = null;
         let wireframeMesh = null;
 
-        // Data storage
+        // Data storage - NOW STORES BOTH DEPTH VALUES
         let rawDepthData = [];
         let isolatedData = [];
         let pointCloud3D = [];
+        let pointCloud3DForVolume = []; // New: stores point cloud using raw depth for volume
         let voxelGrid = new Map();
         let filledVoxelGrid = new Map();
 
@@ -730,6 +731,10 @@
                 // Skip header if present
                 const startLine = lines[0].includes(',') && isNaN(parseFloat(lines[0].split(',')[0])) ? 1 : 0;
 
+                // Check if we have 4 columns (dual depth format) or 3 columns (single depth)
+                const testLine = lines[startLine].split(',');
+                const hasDualDepth = testLine.length >= 4;
+
                 // First, read all valid points so we know the range
                 const allPoints = [];
                 for (let i = startLine; i < lines.length; i++) {
@@ -737,11 +742,21 @@
                     if (cols.length >= 3) {
                         const x = parseFloat(cols[0]);
                         const y = parseFloat(cols[1]);
-                        const depth = parseFloat(cols[2]);
-                        if (!isNaN(x) && !isNaN(y) && !isNaN(depth) && depth > 0) {
-                            allPoints.push({ x, y, depth });
-                            minDepth = Math.min(minDepth, depth);
-                            maxDepth = Math.max(maxDepth, depth);
+                        const depthRaw = parseFloat(cols[2]);
+                        // Use geometry depth if available (4th column), otherwise use raw depth
+                        const depthGeometry = hasDualDepth && cols.length >= 4 ? 
+                            parseFloat(cols[3]) : depthRaw;
+                        
+                        if (!isNaN(x) && !isNaN(y) && !isNaN(depthRaw) && depthRaw > 0) {
+                            allPoints.push({ 
+                                x, 
+                                y, 
+                                depth: depthGeometry,  // For rendering (geometry-corrected)
+                                depthRaw: depthRaw     // For volume calculations (accurate)
+                            });
+                            // Use geometry depth for display statistics
+                            minDepth = Math.min(minDepth, depthGeometry);
+                            maxDepth = Math.max(maxDepth, depthGeometry);
                             minX = Math.min(minX, x);
                             maxX = Math.max(maxX, x);
                             minY = Math.min(minY, y);
@@ -762,9 +777,11 @@
                     minX: cropThresholdX, maxX,
                     minY, maxY,
                     imageWidth: maxX - cropThresholdX + 1,
-                    imageHeight: maxY - minY + 1
+                    imageHeight: maxY - minY + 1,
+                    hasDualDepth: hasDualDepth
                 };
 
+                console.log(`Loaded ${hasDualDepth ? 'dual-depth' : 'single-depth'} CSV format`);
                 resolve();
             });
         }
@@ -772,14 +789,22 @@
         function createPointCloud() {
             // Convert 2D depth data to 3D coordinates (absolute metric coordinates)
             pointCloud3D = [];
+            pointCloud3DForVolume = [];
             const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
             const focalLength = (dataStats.imageWidth / 2) / Math.tan(fov / 2);
 
             for (const point of rawDepthData) {
+                // For rendering - use geometry-corrected depth
                 const z = point.depth;
                 const x = (point.x - dataStats.imageWidth / 2) * z / focalLength;
                 const y = -(point.y - dataStats.imageHeight / 2) * z / focalLength;
                 pointCloud3D.push(new THREE.Vector3(x, y, z));
+                
+                // For volume calculation - use raw accurate depth
+                const zRaw = point.depthRaw;
+                const xRaw = (point.x - dataStats.imageWidth / 2) * zRaw / focalLength;
+                const yRaw = -(point.y - dataStats.imageHeight / 2) * zRaw / focalLength;
+                pointCloud3DForVolume.push(new THREE.Vector3(xRaw, yRaw, zRaw));
             }
 
             // Center the point cloud but preserve absolute scale
@@ -794,20 +819,27 @@
         function centerPointCloud() {
             if (pointCloud3D.length === 0) return;
 
-            // Calculate center point
+            // Calculate center point for rendering cloud
             const bbox = new THREE.Box3().setFromPoints(pointCloud3D);
             const center = bbox.getCenter(new THREE.Vector3());
 
-            // Only center, don't scale - preserve absolute dimensions
+            // Center both point clouds
             for (let i = 0; i < pointCloud3D.length; i++) {
                 pointCloud3D[i].sub(center);
+            }
+            
+            // Also center the volume calculation cloud
+            const bboxVolume = new THREE.Box3().setFromPoints(pointCloud3DForVolume);
+            const centerVolume = bboxVolume.getCenter(new THREE.Vector3());
+            for (let i = 0; i < pointCloud3DForVolume.length; i++) {
+                pointCloud3DForVolume[i].sub(centerVolume);
             }
         }
 
         function adjustCameraForObject() {
             if (pointCloud3D.length === 0) return;
 
-            // Calculate bounding box of centered object
+            // Calculate bounding box of centered object (use rendering cloud)
             const bbox = new THREE.Box3().setFromPoints(pointCloud3D);
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
@@ -860,14 +892,14 @@
 
             if (rawDepthData.length === 0) return;
 
-            // --- FIX: Calculate min/max depth from the *currently displayed data* for better color contrast ---
+            // Calculate min/max depth from the currently displayed data for better color contrast
             let displayMinDepth = Infinity;
             let displayMaxDepth = -Infinity;
             for (const point of rawDepthData) {
+                // Use geometry depth for visualization
                 if (point.depth < displayMinDepth) displayMinDepth = point.depth;
                 if (point.depth > displayMaxDepth) displayMaxDepth = point.depth;
             }
-            // --- END FIX ---
 
             // Calculate scale to fit canvas
             const scaleX = canvas.width / dataStats.imageWidth;
@@ -877,7 +909,7 @@
             const offsetX = (canvas.width - dataStats.imageWidth * scale) / 2;
             const offsetY = (canvas.height - dataStats.imageHeight * scale) / 2;
 
-            const depthRange = displayMaxDepth - displayMinDepth; // Use the new, local range
+            const depthRange = displayMaxDepth - displayMinDepth;
 
             // Draw depth points
             ctx.save();
@@ -888,7 +920,7 @@
                 // Normalize depth based on the local range to ensure full color spectrum is used
                 const normalizedDepth = depthRange > 0 
                     ? (point.depth - displayMinDepth) / depthRange
-                    : 0.5; // If all points have same depth, use a mid-color
+                    : 0.5;
 
                 // Map normalized depth to a hue value in the HSL color space.
                 // We'll map it from blue (240) for close points to red (0) for far points.
@@ -1028,14 +1060,22 @@
         async function updatePointCloudFromIsolated() {
             // Convert isolated 2D data to 3D (absolute metric coordinates)
             pointCloud3D = [];
+            pointCloud3DForVolume = [];
             const fov = parseFloat(document.getElementById('cameraFov').value) * (Math.PI / 180);
             const focalLength = (dataStats.imageWidth / 2) / Math.tan(fov / 2);
 
             for (const point of isolatedData) {
+                // For rendering - use geometry-corrected depth
                 const z = point.depth;
                 const x = (point.x - dataStats.imageWidth / 2) * z / focalLength;
                 const y = -(point.y - dataStats.imageHeight / 2) * z / focalLength;
                 pointCloud3D.push(new THREE.Vector3(x, y, z));
+                
+                // For volume calculation - use raw accurate depth
+                const zRaw = point.depthRaw;
+                const xRaw = (point.x - dataStats.imageWidth / 2) * zRaw / focalLength;
+                const yRaw = -(point.y - dataStats.imageHeight / 2) * zRaw / focalLength;
+                pointCloud3DForVolume.push(new THREE.Vector3(xRaw, yRaw, zRaw));
             }
 
             // Center the point cloud but preserve absolute scale
@@ -1058,7 +1098,7 @@
             return inside;
         }
 
-        // Voxel generation
+        // Voxel generation - USES GEOMETRY-CORRECTED FOR VISUALIZATION, RAW FOR VOLUME
         async function generateVoxels() {
             if (pointCloud3D.length === 0) {
                 alert('Please upload and isolate object data first.');
@@ -1069,12 +1109,16 @@
 
             const voxelSize = parseFloat(document.getElementById('voxelSize').value);
             
-            // Calculate bounding box of isolated points
+            // Calculate bounding box using GEOMETRY-CORRECTED points for visualization
             const bbox = new THREE.Box3().setFromPoints(pointCloud3D);
             const min = bbox.min;
             const max = bbox.max;
 
-            // Calculate grid dimensions
+            // ALSO calculate bounding box for RAW points for accurate volume
+            const bboxRaw = new THREE.Box3().setFromPoints(pointCloud3DForVolume);
+            const sizeRaw = bboxRaw.getSize(new THREE.Vector3());
+            
+            // Calculate grid dimensions based on geometry-corrected points
             const gridX = Math.ceil((max.x - min.x) / voxelSize);
             const gridY = Math.ceil((max.y - min.y) / voxelSize);
             const gridZ = Math.ceil((max.z - min.z) / voxelSize);
@@ -1092,7 +1136,7 @@
             voxelGrid.clear();
             filledVoxelGrid.clear();
 
-            // Mark voxels that contain points
+            // Mark voxels that contain points using GEOMETRY-CORRECTED points
             for (const point of pointCloud3D) {
                 const vx = Math.floor((point.x - min.x) / voxelSize);
                 const vy = Math.floor((point.y - min.y) / voxelSize);
@@ -1105,12 +1149,18 @@
             // Fill interior voxels using layer-by-layer approach
             await fillInteriorVoxels(min, voxelSize, gridX, gridY, gridZ);
 
-            // Update statistics
+            // Calculate the actual voxel volume based on RAW dimensions
+            const voxelSizeRawX = sizeRaw.x / gridX;
+            const voxelSizeRawY = sizeRaw.y / gridY;
+            const voxelSizeRawZ = sizeRaw.z / gridZ;
+            const actualVoxelVolume = voxelSizeRawX * voxelSizeRawY * voxelSizeRawZ;
+
+            // Update statistics - use actual volume from raw dimensions
             voxelStats = {
                 filled: filledVoxelGrid.size,
                 total: totalVoxels,
                 voxelSize: voxelSize,
-                voxelVolume: Math.pow(voxelSize, 3),
+                voxelVolume: actualVoxelVolume,  // Use the raw-space volume
                 bounds: { min, max, gridX, gridY, gridZ }
             };
 
@@ -1212,7 +1262,7 @@
             return inside;
         }
 
-        // Visualization
+        // Visualization - USES GEOMETRY-CORRECTED DEPTH FOR DISPLAY
         function updateVisualization() {
             // Clear existing meshes
             if (pointCloudMesh) {
@@ -1228,12 +1278,12 @@
                 wireframeMesh = null;
             }
 
-            // Show point cloud
+            // Show point cloud (uses geometry-corrected pointCloud3D for display)
             if (document.getElementById('showPoints').checked && pointCloud3D.length > 0) {
                 createPointCloudMesh();
             }
 
-            // Show voxels
+            // Show voxels (positioned based on raw depth but visible for geometry)
             if (document.getElementById('showVoxels').checked && filledVoxelGrid.size > 0) {
                 createVoxelMesh();
             }
@@ -1245,6 +1295,7 @@
         }
 
         function createPointCloudMesh() {
+            // Use geometry-corrected point cloud for display
             const geometry = new THREE.BufferGeometry().setFromPoints(pointCloud3D);
             const material = new THREE.PointsMaterial({
                 color: 0x00d4ff,
