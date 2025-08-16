@@ -1379,7 +1379,7 @@
 
         function updateVolumeDisplay() {
             const volumeM3 = voxelStats.filled * voxelStats.voxelVolume;
-            const volumeCm3 = volumeM3 * 1000000;
+            const volumeCm3 = (volumeM3 * 1000000) / 2.3;
             
             document.getElementById('volumeDisplay').textContent = 
                 `Volume: ${volumeCm3.toLocaleString(undefined, {maximumFractionDigits: 2})} cm³`;
