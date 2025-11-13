@@ -916,18 +916,42 @@
             for (const point of rawDepthData) {
                 const x = offsetX + point.x * scale;
                 const y = offsetY + point.y * scale;
-                
+
                 // Normalize depth based on the local range to ensure full color spectrum is used
-                const normalizedDepth = depthRange > 0 
+                const normalizedDepth = depthRange > 0
                     ? (point.depth - displayMinDepth) / depthRange
                     : 0.5;
 
-                // Map normalized depth to a hue value in the HSL color space.
-                // We'll map it from blue (240) for close points to red (0) for far points.
-                const hue = (1 - normalizedDepth) * 240; 
-                
-                // Use HSL for a vibrant, easily distinguishable color map.
-                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                // Enhanced visibility: Use vibrant turbo-like colormap with higher saturation and lightness
+                // Maps from cool colors (close) to warm colors (far) for maximum contrast
+                let r, g, b;
+                if (normalizedDepth < 0.25) {
+                    // Deep blue to cyan
+                    const t = normalizedDepth / 0.25;
+                    r = Math.floor(t * 100);
+                    g = Math.floor(150 + t * 105);
+                    b = 255;
+                } else if (normalizedDepth < 0.5) {
+                    // Cyan to green
+                    const t = (normalizedDepth - 0.25) / 0.25;
+                    r = Math.floor(100 + t * 155);
+                    g = 255;
+                    b = Math.floor(255 * (1 - t));
+                } else if (normalizedDepth < 0.75) {
+                    // Green to yellow
+                    const t = (normalizedDepth - 0.5) / 0.25;
+                    r = 255;
+                    g = 255;
+                    b = Math.floor(t * 100);
+                } else {
+                    // Yellow to red/magenta
+                    const t = (normalizedDepth - 0.75) / 0.25;
+                    r = 255;
+                    g = Math.floor(255 * (1 - t * 0.7));
+                    b = Math.floor(t * 200);
+                }
+
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
                 ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(scale), Math.ceil(scale));
             }
             ctx.restore();
